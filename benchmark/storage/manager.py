@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import aiosqlite
 
@@ -493,7 +494,7 @@ class StorageManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _row_to_benchmark(row: tuple, description: tuple | None) -> Benchmark:
+    def _row_to_benchmark(row: Any, description: tuple[Any, ...] | None) -> Benchmark:
         """Convert a database row to a Benchmark domain model."""
         # Column order from schema:
         # id, conversation_id, source, prompt, attachments_json,
@@ -520,7 +521,7 @@ class StorageManager:
         )
 
     @staticmethod
-    def _row_to_execution(row: tuple, description: tuple | None) -> Execution:
+    def _row_to_execution(row: Any, description: tuple[Any, ...] | None) -> Execution:
         """Convert a database row to an Execution domain model."""
         cols = [d[0] for d in description] if description else []
         data = dict(zip(cols, row, strict=False))
@@ -572,7 +573,7 @@ class StorageManager:
         )
 
     @staticmethod
-    def _row_to_evaluation(row: tuple, description: tuple | None) -> Evaluation:
+    def _row_to_evaluation(row: Any, description: tuple[Any, ...] | None) -> Evaluation:
         """Convert a database row to an Evaluation domain model."""
         cols = [d[0] for d in description] if description else []
         data = dict(zip(cols, row, strict=False))

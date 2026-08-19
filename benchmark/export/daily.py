@@ -5,17 +5,16 @@ from __future__ import annotations
 import csv
 import json
 import shutil
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
 from benchmark.models.domain import Benchmark, Evaluation, Execution, ExportManifest
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from benchmark.storage.manager import StorageManager
 
 logger: structlog.stdlib.BoundLogger = structlog.get_logger(__name__)
@@ -97,7 +96,12 @@ class DailyExporter:
                 ("evaluations", evaluations, EVALUATION_COLUMNS, self._evaluation_row),
             ]:
                 csv_path = date_dir / f"{name}_{date}.csv"
-                self._write_csv(csv_path, items, cols, row_fn)
+                self._write_csv(
+                    csv_path,
+                    cast(list[Any], items),
+                    cols,
+                    cast(Callable[[Any], list[Any]], row_fn),
+                )
                 files.append(str(csv_path))
         except ExportError:
             raise

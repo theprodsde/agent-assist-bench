@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import mimetypes
 from asyncio import Lock
-from typing import Literal, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, cast, runtime_checkable
 
 import structlog
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -628,11 +628,11 @@ class DiscordConnector:
         if not callable(method):
             return None
         try:
-            return await method(source)
+            return cast(bytes | None, await method(source))
         except TypeError:
             # Adapters commonly expose the Discord REST shape as
             # download_attachment(attachment_id, url).
-            return await method(source.id, source.url or source.proxy_url)
+            return cast(bytes | None, await method(source.id, source.url or source.proxy_url))
 
     async def _resolve_url(self, source: DiscordAttachment) -> str | None:
         """Call the canonical URL resolver, with a REST-friendly alias."""
@@ -643,9 +643,9 @@ class DiscordConnector:
         if not callable(method):
             return None
         try:
-            return await method(source)
+            return cast(str | None, await method(source))
         except TypeError:
-            return await method(source.id)
+            return cast(str | None, await method(source.id))
 
     @staticmethod
     def _mime_type(

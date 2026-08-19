@@ -204,7 +204,7 @@ class TelegramPollingBot:
             message.text = clean
             if message.caption:
                 message.caption = clean
-        update._tags = tags  # carried through _to_benchmark monkey-patch below
+        update._tags = tags  # type: ignore[attr-defined]  # carried through _to_benchmark monkey-patch below
 
         result = await self._connector.handle_update(update)
 
@@ -219,7 +219,7 @@ class TelegramPollingBot:
 class _TaggingConnector(TelegramConnector):
     """TelegramConnector subclass that propagates #tags extracted by the bot."""
 
-    async def _to_benchmark(self, update: Any) -> Any:  # type: ignore[override]
+    async def _to_benchmark(self, update: Any) -> Any:
         bench = await super()._to_benchmark(update)
         tags = getattr(update, "_tags", [])
         if tags:

@@ -306,7 +306,7 @@ class OpenAICompatibleAdapter:
             headers.update(signer.sign(body))
         return headers
 
-    def _extract_metrics(self, data: dict) -> LLMMetrics | None:
+    def _extract_metrics(self, data: dict[str, Any]) -> LLMMetrics | None:
         """Extract model, token, and cost metrics from an OpenAI response."""
         usage = data.get("usage") or {}
         model = data.get("model") or self._model

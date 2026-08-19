@@ -68,12 +68,5 @@ class Settings(BaseSettings):
     telegram_bot_token: SecretStr = SecretStr("")
     discord_bot_token: SecretStr = SecretStr("")
 
-    # Cost per hour for each agent container (used to estimate per-request infra cost).
-    # Formula: (latency_ms / 3_600_000) * cost_per_hour
-    # On Azure ACA consumption (2 vCPU / 4 GB): ~$0.12/hr each.
-    # Accurate for relative comparison — does not include idle/storage costs.
-    hermes_cost_per_hour: float | None = None
-    openclaw_cost_per_hour: float | None = None
-
     # Logging
     log_level: str = "INFO"
