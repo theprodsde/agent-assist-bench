@@ -434,8 +434,25 @@ class TelegramConnector:
             status = "✅" if execution.success else "❌"
             header = f"{status} *{execution.agent_name}* ({latency})"
             lines = [header]
+            # Include agent details
+            lines.append(f"Agent: {execution.agent_name}")
+            # Map deployment type to user-friendly format
+            deployment_map = {
+                "local_docker": "local_docker",
+                "virtual_machine": "vm",
+                "managed_container": "managed",
+            }
+            deployment_display = deployment_map.get(
+                execution.deployment.deployment_type.value, execution.deployment.deployment_type.value
+            )
+            lines.append(f"Deployment: {deployment_display}")
+            # Include status for failed executions
+            if not execution.success:
+                lines.append("Status: failed")
+            # Include response
             if execution.result.raw_response:
                 lines.append(execution.result.raw_response.strip())
+            # Include errors
             if execution.result.errors:
                 lines.append("Errors: " + "; ".join(execution.result.errors))
             sections.append("\n".join(lines))
