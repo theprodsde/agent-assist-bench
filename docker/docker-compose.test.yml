@@ -1,0 +1,54 @@
+# Local test: both agents side by side
+#
+# 1. Fill in docker/hermes/.env and docker/openclaw/.env with your NVIDIA key
+#
+# 2. docker compose -f docker/docker-compose.test.yml up -d
+#
+# 3. Wait 30s, then:
+#    curl http://localhost:8001/v1/models
+#    curl http://localhost:8002/health
+#
+# 4. aab run "Explain dependency injection"
+
+services:
+  hermes:
+    build:
+      context: ./hermes
+    container_name: hermes-bench
+    restart: unless-stopped
+    command: ["sh", "-lc", "python -m hermes_agent.server --host 0.0.0.0 --port 8642"]
+    ports:
+      - "8001:8642"
+    volumes:
+      - hermes-data:/opt/data
+      - ./hermes/config.yaml:/opt/data/config.yaml:ro
+    env_file:
+      - hermes/.env
+    environment:
+      # These env vars override /opt/data/.env for the API server
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+
+  openclaw:
+    build:
+      context: ..
+      dockerfile: docker/openclaw/Dockerfile
+    container_name: openclaw-bench
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    env_file:
+      - openclaw/.env
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+
+volumes:
+  hermes-data:

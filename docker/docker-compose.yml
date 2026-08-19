@@ -1,0 +1,81 @@
+# Docker Compose for building agents from source for AgentAssistBench
+#
+# This builds Hermes and OpenClaw from the source repos cloned in external/
+# Both are configured to expose OpenAI-compatible /v1/chat/completions endpoints
+# backed by NVIDIA Nemotron model via the free tier API.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose ps
+#   curl http://localhost:8001/health
+#   curl http://localhost:8002/health
+#
+# To rebuild without cache:
+#   docker compose build --no-cache
+
+version: '3.8'
+
+services:
+  hermes:
+    build:
+      context: ..
+      dockerfile: docker/hermes/Dockerfile.source
+    container_name: hermes-bench
+    restart: unless-stopped
+    ports:
+      - "8001:8642"
+    environment:
+      # NVIDIA Nemotron model configuration
+      MODEL_NAME: ${HERMES_MODEL_NAME:-nvidia/nemotron-3-super-120b-a12b}
+      MODEL_BASE_URL: ${HERMES_MODEL_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      MODEL_API_KEY: ${HERMES_MODEL_API_KEY}
+      # Hermes API server settings
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_PORT: "8642"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - hermes-data:/opt/data
+      - ./hermes/config.yaml:/opt/data/config.yaml:ro
+    env_file:
+      - ./hermes/.env
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8642/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  openclaw:
+    build:
+      context: ..
+      dockerfile: docker/openclaw/Dockerfile.source
+    container_name: openclaw-bench
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      # NVIDIA Nemotron model configuration
+      MODEL_NAME: ${OPENCLAW_MODEL_NAME:-nvidia/nemotron-3-super-120b-a12b}
+      MODEL_BASE_URL: ${OPENCLAW_MODEL_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      MODEL_API_KEY: ${OPENCLAW_MODEL_API_KEY}
+      # OpenClaw settings
+      AGENT_API_KEY: ${OPENCLAW_AGENT_API_KEY}
+      NODE_ENV: production
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+      - ./openclaw/config.yaml:/app/config.yaml:ro
+    env_file:
+      - ./openclaw/.env
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  hermes-data:
+    driver: local
+  openclaw-data:
+    driver: local

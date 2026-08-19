@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install fastapi uvicorn httpx pydantic
+
+COPY openclaw_wrapper.py .
+
+EXPOSE 8002
+
+CMD ["python", "openclaw_wrapper.py"]

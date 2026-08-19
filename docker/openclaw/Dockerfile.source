@@ -1,0 +1,12 @@
+# OpenClaw wrapper for AgentAssistBench
+# Uses official ghcr.io/openclaw/openclaw image with configuration
+
+FROM ghcr.io/openclaw/openclaw:latest
+
+# Set environment for NVIDIA Nemotron backend
+ENV MODEL_NAME=nvidia/nemotron-3-super-120b-a12b
+ENV MODEL_BASE_URL=https://integrate.api.nvidia.com/v1
+ENV NODE_ENV=production
+
+# Override default command to bind to LAN (0.0.0.0) for benchmark access
+CMD ["node", "openclaw.mjs", "gateway", "--bind", "lan"]

@@ -1,0 +1,33 @@
+# OpenClaw Agent Configuration for AgentAssistBench
+# Maximum freedom, full tool access, NVIDIA Nemotron-120B backend
+
+provider:
+  type: openai-compatible
+  base_url: ${MODEL_BASE_URL:-https://integrate.api.nvidia.com/v1}
+  api_key: ${MODEL_API_KEY}
+  model: ${MODEL_NAME:-nvidia/llama-3.1-nemotron-ultra-253b-v1}
+  temperature: 0.7
+  max_tokens: 4096
+
+gateway:
+  mode: ${GATEWAY_MODE:-local}
+
+agent:
+  auto_approve: true
+  max_iterations: 50
+
+tools:
+  browser:
+    enabled: true
+    headless: true
+  code_execution:
+    enabled: true
+    sandbox: true
+  web_search:
+    enabled: true
+  file_operations:
+    enabled: true
+
+api:
+  auth:
+    bearer_token: ${AGENT_API_KEY}

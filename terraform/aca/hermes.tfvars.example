@@ -1,0 +1,40 @@
+# ------------------------------------------------------------------
+# Hermes ACA deployment — separate resource group
+#
+# Deploy:
+#   cp hermes.tfvars.example hermes.tfvars
+#   terraform init
+#   terraform apply -var-file=hermes.tfvars
+#
+# Get endpoint:
+#   terraform output endpoint_url
+#   → https://hermes-ca.<region>.azurecontainerapps.io
+#
+# Wire to benchmark runner:
+#   export BENCH_HERMES_ENDPOINT=$(terraform output -raw endpoint_url)
+#   export BENCH_HERMES_DEPLOYMENT_TYPE=managed_container
+# ------------------------------------------------------------------
+
+agent_name          = "hermes"
+resource_group_name = "rg-hermes"
+container_image     = "agentbenchacr.azurecr.io/hermes:latest"
+container_port      = 8001
+region              = "eastus"
+
+# Same resources as OpenClaw — fair comparison
+cpu    = 2.0
+memory = "4Gi"
+
+# HTTP-based autoscaling: 1 replica always ready, scale to 10 on load
+min_replicas              = 1
+max_replicas              = 10
+scale_concurrent_requests = "10"
+
+# API key — in production, use a Key Vault reference
+api_key_secret_ref = "your-hermes-api-key-here"
+
+tags = {
+  project     = "agentassistbench"
+  agent       = "hermes"
+  environment = "production"
+}

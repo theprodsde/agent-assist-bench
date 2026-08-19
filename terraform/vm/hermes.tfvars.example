@@ -1,0 +1,38 @@
+# Example variable values for deploying Hermes on a VM.
+#
+# Usage:
+#   terraform plan -var-file=hermes.tfvars.example
+#   terraform apply -var-file=hermes.tfvars.example
+#
+# Replace placeholder values with your actual configuration before use.
+
+agent_name          = "hermes"
+vm_size             = "Standard_B2s"
+region              = "eastus"
+agent_port          = 8001
+health_check_path   = "/health"
+resource_group_name = "agentassistbench-rg"
+
+# Azure Key Vault secret URI for the Hermes API key
+api_key_secret_ref = "https://your-keyvault.vault.azure.net/secrets/hermes-api-key"
+
+# Networking
+vnet_name   = "agent-vnet"
+subnet_name = "agent-subnet"
+
+# VM image (Ubuntu 22.04 LTS)
+image_publisher = "Canonical"
+image_offer     = "0001-com-ubuntu-server-jammy"
+image_sku       = "22_04-lts-gen2"
+image_version   = "latest"
+
+# SSH access
+admin_username      = "agentadmin"
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# Tags
+tags = {
+  environment = "production"
+  project     = "agentassistbench"
+  agent       = "hermes"
+}

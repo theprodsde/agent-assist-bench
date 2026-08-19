@@ -1,0 +1,40 @@
+# ------------------------------------------------------------------
+# OpenClaw ACA deployment — separate resource group from Hermes
+#
+# Deploy:
+#   cp openclaw.tfvars.example openclaw.tfvars
+#   terraform init
+#   terraform apply -var-file=openclaw.tfvars
+#
+# Get endpoint:
+#   terraform output endpoint_url
+#   → https://openclaw-ca.<region>.azurecontainerapps.io
+#
+# Wire to benchmark runner:
+#   export BENCH_OPENCLAW_ENDPOINT=$(terraform output -raw endpoint_url)
+#   export BENCH_OPENCLAW_DEPLOYMENT_TYPE=managed_container
+# ------------------------------------------------------------------
+
+agent_name          = "openclaw"
+resource_group_name = "rg-openclaw"
+container_image     = "agentbenchacr.azurecr.io/openclaw:latest"
+container_port      = 8002
+region              = "eastus"
+
+# Same resources as Hermes — fair comparison
+cpu    = 2.0
+memory = "4Gi"
+
+# HTTP-based autoscaling: 1 replica always ready, scale to 10 on load
+min_replicas              = 1
+max_replicas              = 10
+scale_concurrent_requests = "10"
+
+# API key — in production, use a Key Vault reference
+api_key_secret_ref = "your-openclaw-api-key-here"
+
+tags = {
+  project     = "agentassistbench"
+  agent       = "openclaw"
+  environment = "production"
+}

@@ -1,0 +1,16 @@
+# Azure Container Registry for agent images
+#
+# Deploy:
+#   cp acr.tfvars.example acr.tfvars
+#   terraform init
+#   terraform apply -var-file=acr.tfvars
+#
+# Push images:
+#   az acr login --name agentbenchacr
+#   az acr build --registry agentbenchacr --image hermes:latest --file docker/hermes/Dockerfile .
+#   az acr build --registry agentbenchacr --image openclaw:latest --file docker/openclaw/Dockerfile .
+
+registry_name       = "agentbenchacr"
+resource_group_name = "rg-agentbench-acr"
+region              = "eastus"
+sku                 = "Basic"

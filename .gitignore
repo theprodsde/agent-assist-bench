@@ -1,0 +1,110 @@
+## Python
+
+# Bytecode and compiled files
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Type checking and linting caches
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pyre/
+
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.crt
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/**/*.tfvars
+!terraform/**/*.tfvars.example
+
+# Docker and runtime state
+docker/**/.env
+!docker/**/.env.example
+
+# Docker agent data and state (large runtime artifacts, not needed for repo)
+docker/hermes/data/
+docker/openclaw/state/
+docker/hermes/logs/
+docker/openclaw/logs/
+
+# Benchmark storage (runtime databases and exports)
+storage/benchmark.db
+storage/benchmark.db-*
+storage/exports/
+storage/logs/
+
+# Logs
+logs/
+*.log
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node (if used for frontend in future)
+node_modules/
+.npm/
+npm-debug.log*
+yarn-error.log*
+
+# Internal development tooling
+.kiro/
+
+# Project-specific
+.claude/
+.local/
+
+# Keep package lock for reproducibility
+# uv.lock - intentionally tracked for reproducible installs
+
+

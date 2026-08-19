@@ -1,0 +1,15 @@
+# Hermes wrapper for AgentAssistBench
+# Uses official nousresearch/hermes-agent image with configuration
+
+FROM nousresearch/hermes-agent:latest
+
+# Set environment for NVIDIA Nemotron backend
+ENV MODEL_NAME=nvidia/nemotron-3-super-120b-a12b
+ENV MODEL_BASE_URL=https://integrate.api.nvidia.com/v1
+ENV API_SERVER_ENABLED=true
+ENV API_SERVER_HOST=0.0.0.0
+ENV API_SERVER_PORT=8642
+
+EXPOSE 8642
+
+# Use the official entrypoint

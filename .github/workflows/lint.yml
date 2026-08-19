@@ -1,0 +1,42 @@
+name: Lint & Type Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      
+      - name: Lint with ruff
+        run: |
+          echo "Checking code style..."
+          ruff check benchmark/ tests/
+          echo "✓ Ruff check passed"
+      
+      - name: Format check with ruff
+        run: |
+          echo "Checking code formatting..."
+          ruff format --check benchmark/ tests/
+          echo "✓ Format check passed"
+      
+      - name: Type check with mypy
+        run: |
+          echo "Type checking..."
+          mypy benchmark/
+          echo "✓ Type check passed"
