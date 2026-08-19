@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import json
 import shutil
-from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -15,6 +14,8 @@ import structlog
 from benchmark.models.domain import Benchmark, Evaluation, Execution, ExportManifest
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from benchmark.storage.manager import StorageManager
 
 logger: structlog.stdlib.BoundLogger = structlog.get_logger(__name__)
