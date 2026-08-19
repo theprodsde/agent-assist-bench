@@ -8,29 +8,33 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "0.11.x"
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Checkout code
+        run: |
+          rm -rf $GITHUB_WORKSPACE || true
+          git clone --depth 1 ${{ github.server_url }}/${{ github.repository }}.git $GITHUB_WORKSPACE
+          cd $GITHUB_WORKSPACE
+          git fetch origin ${{ github.ref }}
+          git checkout -f ${{ github.sha }}
       
       - name: Install dependencies
-        run: uv sync --group lint
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv sync --group lint
       
       - name: Lint with ruff
-        run: uv run ruff check benchmark/ tests/
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv run ruff check benchmark/ tests/
       
       - name: Format check with ruff
-        run: uv run ruff format --check benchmark/ tests/
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv run ruff format --check benchmark/ tests/
       
       - name: Type check with mypy
-        run: uv run mypy benchmark/
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv run mypy benchmark/

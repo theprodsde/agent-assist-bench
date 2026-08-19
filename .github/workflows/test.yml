@@ -8,26 +8,31 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
     
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "0.11.x"
+      - name: Checkout code
+        run: |
+          rm -rf $GITHUB_WORKSPACE || true
+          git clone --depth 1 ${{ github.server_url }}/${{ github.repository }}.git $GITHUB_WORKSPACE
+          cd $GITHUB_WORKSPACE
+          git fetch origin ${{ github.ref }}
+          git checkout -f ${{ github.sha }}
       
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+        run: |
+          pyenv install -s ${{ matrix.python-version }}
+          pyenv shell ${{ matrix.python-version }}
       
       - name: Install dependencies
-        run: uv sync --group test
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv sync --group test
       
       - name: Run tests
-        run: uv run pytest tests/ -v --tb=short
+        run: |
+          cd $GITHUB_WORKSPACE
+          uv run pytest tests/ -v --tb=short
