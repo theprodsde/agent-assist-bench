@@ -27,6 +27,17 @@ dev = [
     "mypy>=1.5.0",
 ]
 
+[dependency-groups]
+test = [
+    "hypothesis>=6.80.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+]
+
 [project.scripts]
 aab = "benchmark.cli.main:app"
 
