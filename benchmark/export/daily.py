@@ -98,9 +98,9 @@ class DailyExporter:
                 csv_path = date_dir / f"{name}_{date}.csv"
                 self._write_csv(
                     csv_path,
-                    cast(list[Any], items),
+                    cast("list[Any]", items),
                     cols,
-                    cast(Callable[[Any], list[Any]], row_fn),
+                    cast("Callable[[Any], list[Any]]", row_fn),
                 )
                 files.append(str(csv_path))
         except ExportError:
