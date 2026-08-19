@@ -8,33 +8,33 @@ on:
 
 jobs:
   lint:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
         run: |
-          rm -rf $GITHUB_WORKSPACE || true
-          git clone --depth 1 ${{ github.server_url }}/${{ github.repository }}.git $GITHUB_WORKSPACE
-          cd $GITHUB_WORKSPACE
-          git fetch origin ${{ github.ref }}
-          git checkout -f ${{ github.sha }}
+          pip install uv
       
       - name: Install dependencies
         run: |
-          cd $GITHUB_WORKSPACE
           uv sync --group lint
       
       - name: Lint with ruff
         run: |
-          cd $GITHUB_WORKSPACE
           uv run ruff check benchmark/ tests/
       
       - name: Format check with ruff
         run: |
-          cd $GITHUB_WORKSPACE
           uv run ruff format --check benchmark/ tests/
       
       - name: Type check with mypy
         run: |
-          cd $GITHUB_WORKSPACE
           uv run mypy benchmark/
