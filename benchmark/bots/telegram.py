@@ -144,12 +144,14 @@ class TelegramPollingBot:
         connector: TelegramConnector,
         api: TelegramBotApi | None = None,
         poll_timeout: int = 25,
+        allowed_chat_ids: frozenset[str] | None = None,
     ) -> None:
         self._connector = connector
         self._api = api or TelegramBotApi(token)
         self._poll_timeout = poll_timeout
         self._offset: int | None = None
         self._running = False
+        self._allowed_chat_ids: frozenset[str] = allowed_chat_ids or frozenset()
 
     async def run(self) -> None:
         """Block until SIGINT or SIGTERM; process each update in order."""
@@ -196,6 +198,16 @@ class TelegramPollingBot:
         if message is None:
             return
 
+        if self._allowed_chat_ids:
+            chat_id = str(message.chat.id) if message.chat is not None else None
+            if chat_id not in self._allowed_chat_ids:
+                logger.warning(
+                    "telegram_update_unauthorized",
+                    update_id=str(update.update_id),
+                    chat_id=chat_id,
+                )
+                return
+
         # Inject tags extracted from #hashtags before handing to connector.
         # The connector receives the clean prompt; tags are stored on the Benchmark.
         text = message.text or message.caption or ""
@@ -233,6 +245,7 @@ async def run_polling(
     storage: Any,
     runner: Any,
     poll_timeout: int = 25,
+    allowed_chat_ids: frozenset[str] | None = None,
 ) -> None:
     """Entry point called by the CLI command.
 
@@ -248,5 +261,11 @@ async def run_polling(
         response_client=api,
         response_idempotency=InMemoryTelegramResponseIdempotency(),
     )
-    bot = TelegramPollingBot(token=token, connector=connector, api=api, poll_timeout=poll_timeout)
+    bot = TelegramPollingBot(
+        token=token,
+        connector=connector,
+        api=api,
+        poll_timeout=poll_timeout,
+        allowed_chat_ids=allowed_chat_ids,
+    )
     await bot.run()

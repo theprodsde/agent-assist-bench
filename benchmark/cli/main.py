@@ -120,7 +120,10 @@ def telegram() -> None:
     """
     from benchmark.cli.commands.telegram import telegram_command
 
-    telegram_command(settings.telegram_bot_token.get_secret_value())
+    telegram_command(
+        settings.telegram_bot_token.get_secret_value(),
+        settings.telegram_allowed_chat_ids,
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -33,23 +33,28 @@ from benchmark.cli.wiring import create_context
 logger = structlog.get_logger(__name__)
 
 
-async def _run_bot(token: str) -> None:
+async def _run_bot(token: str, allowed_chat_ids: frozenset[str]) -> None:
     from benchmark.bots.telegram import run_polling
 
     ctx = await create_context()
     try:
         typer.echo("Telegram bot polling started — send messages to your bot.")
+        if allowed_chat_ids:
+            typer.echo(f"Access restricted to chat IDs: {', '.join(sorted(allowed_chat_ids))}")
+        else:
+            typer.echo("Warning: no BENCH_TELEGRAM_ALLOWED_CHAT_IDS set — accepting all chats.")
         typer.echo("Press Ctrl-C to stop.\n")
         await run_polling(
             token=token,
             storage=ctx.storage,
             runner=ctx.runner,
+            allowed_chat_ids=allowed_chat_ids,
         )
     finally:
         await ctx.storage.close()
 
 
-def telegram_command(token: str) -> None:
+def telegram_command(token: str, allowed_chat_ids_str: str) -> None:
     """Start the Telegram polling bot."""
     if not token:
         typer.echo(
@@ -61,8 +66,10 @@ def telegram_command(token: str) -> None:
         )
         raise typer.Exit(code=1)
 
+    allowed = frozenset(x.strip() for x in allowed_chat_ids_str.split(",") if x.strip())
+
     try:
-        asyncio.run(_run_bot(token))
+        asyncio.run(_run_bot(token, allowed))
     except KeyboardInterrupt:
         pass
     except Exception as exc:

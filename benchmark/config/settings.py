@@ -68,5 +68,11 @@ class Settings(BaseSettings):
     telegram_bot_token: SecretStr = SecretStr("")
     discord_bot_token: SecretStr = SecretStr("")
 
+    # Comma-separated Telegram chat IDs allowed to trigger benchmarks.
+    # Empty string means no restriction (accept all chats).
+    # Find your chat ID by messaging @userinfobot in Telegram.
+    # Example: BENCH_TELEGRAM_ALLOWED_CHAT_IDS=123456789,987654321
+    telegram_allowed_chat_ids: str = ""
+
     # Logging
     log_level: str = "INFO"
