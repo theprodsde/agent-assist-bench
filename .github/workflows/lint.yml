@@ -9,32 +9,34 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-      
+
       - name: Install uv
-        run: |
-          pip install uv
-      
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Install dependencies
         run: |
           uv sync --group lint
-      
+
       - name: Lint with ruff
         run: |
           uv run ruff check benchmark/ tests/
-      
+
       - name: Format check with ruff
         run: |
           uv run ruff format --check benchmark/ tests/
-      
+
       - name: Type check with mypy
         run: |
           uv run mypy benchmark/

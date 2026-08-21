@@ -443,7 +443,8 @@ class TelegramConnector:
                 "managed_container": "managed",
             }
             deployment_display = deployment_map.get(
-                execution.deployment.deployment_type.value, execution.deployment.deployment_type.value
+                execution.deployment.deployment_type.value,
+                execution.deployment.deployment_type.value,
             )
             lines.append(f"Deployment: {deployment_display}")
             # Include status for failed executions
