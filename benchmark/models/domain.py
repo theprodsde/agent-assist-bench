@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from ulid import ULID
@@ -201,8 +202,8 @@ class ExecutionResult(BaseModel):
     """Raw result from a single agent execution."""
 
     raw_response: str
-    tool_calls: list[dict] | None = None
-    browser_actions: list[dict] | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    browser_actions: list[dict[str, Any]] | None = None
     errors: list[str] = Field(default_factory=list)
     logs: list[str] = Field(default_factory=list)
 

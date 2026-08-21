@@ -441,12 +441,24 @@ class DiscordConnector:
             parsed = message
         elif isinstance(message, DiscordEvent):
             event_id = message.event_id or message.id
+            if message.message is None:
+                return None, DiscordConnectorError(
+                    code="invalid_message",
+                    message="Discord event does not contain a message",
+                    event_id=event_id,
+                )
             parsed = message.message
         else:
             try:
                 if isinstance(message.get("message"), dict):
                     event = DiscordEvent.model_validate(message)
                     event_id = event.event_id or event.id
+                    if event.message is None:
+                        return None, DiscordConnectorError(
+                            code="invalid_message",
+                            message="Discord event does not contain a message",
+                            event_id=event_id,
+                        )
                     parsed = event.message
                 else:
                     parsed = DiscordMessage.model_validate(message)
@@ -599,13 +611,15 @@ class DiscordConnector:
 
         mime_type = self._mime_type(modality, source.content_type, source.filename)
         filename = source.filename or source.id
-        metadata: dict[str, object] = {
+        metadata: dict[str, str | None] = {
             "discord_attachment_id": source.id,
             "discord_source_url": source.url,
             "discord_proxy_url": source.proxy_url,
             "discord_attachment_type": source.type,
         }
-        metadata = {key: value for key, value in metadata.items() if value is not None}
+        clean_metadata = cast(
+            "dict[str, str]", {k: v for k, v in metadata.items() if v is not None}
+        )
         # Attachment's domain invariant permits one transport source. When
         # bytes are downloaded, retain the source URL in connector metadata;
         # otherwise expose the URL through the canonical URL field.
@@ -616,7 +630,7 @@ class DiscordConnector:
             size_bytes=source.size if source.size is not None else len(content or b""),
             content_bytes=content,
             url=None if content is not None else source_url,
-            **metadata,
+            **clean_metadata,
         )
 
     async def _download(self, source: DiscordAttachment) -> bytes | None:
