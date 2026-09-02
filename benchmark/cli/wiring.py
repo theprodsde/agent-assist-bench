@@ -204,7 +204,7 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
 
         def _make_factory(
             n: str, e: str, m: str, k: str | None, sk: str | None
-        ) -> "Callable[[], AgentAdapter]":
+        ) -> Callable[[], AgentAdapter]:
             def _factory() -> AgentAdapter:
                 return OpenAICompatibleAdapter(
                     endpoint=e,
