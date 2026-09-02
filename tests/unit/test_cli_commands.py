@@ -179,19 +179,21 @@ class TestTelegramCommand:
         async def fake_run_polling(**kwargs):
             captured.append(kwargs.get("allowed_chat_ids"))
 
-        mock_s = self._mock_settings(token="123:TOKEN", allowed_ids="111,222,333", tmp_path=tmp_path)
+        mock_s = self._mock_settings(
+            token="123:TOKEN", allowed_ids="111,222,333", tmp_path=tmp_path
+        )
 
         with (
             patch("benchmark.cli.main.settings", mock_s),
             patch("benchmark.bots.telegram.run_polling", new=fake_run_polling),
             patch("benchmark.cli.wiring.create_context") as mock_ctx,
         ):
-                    ctx = AsyncMock()
-                    ctx.storage = AsyncMock()
-                    ctx.storage.close = AsyncMock()
-                    ctx.runner = AsyncMock()
-                    mock_ctx.return_value = ctx
-                    runner.invoke(app, ["telegram"])
+            ctx = AsyncMock()
+            ctx.storage = AsyncMock()
+            ctx.storage.close = AsyncMock()
+            ctx.runner = AsyncMock()
+            mock_ctx.return_value = ctx
+            runner.invoke(app, ["telegram"])
 
         if captured:
             assert captured[0] == frozenset({"111", "222", "333"})
