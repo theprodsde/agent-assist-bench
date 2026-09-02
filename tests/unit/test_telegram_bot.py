@@ -7,17 +7,17 @@ _TaggingConnector (tag injection), and run_polling (entry point).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 
 from benchmark.bots.telegram import (
     TelegramBotApi,
     TelegramPollingBot,
-    _TaggingConnector,
     _extract_tags_and_prompt,
+    _TaggingConnector,
     run_polling,
 )
 from benchmark.connectors.telegram import (
@@ -26,7 +26,6 @@ from benchmark.connectors.telegram import (
     TelegramMessage,
     TelegramUpdate,
 )
-
 
 # ---------------------------------------------------------------------------
 # _extract_tags_and_prompt
@@ -329,10 +328,8 @@ class TestTelegramPollingBot:
         )
 
         async def _run_briefly() -> None:
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await bot.run()
-            except asyncio.CancelledError:
-                pass
 
         await _run_briefly()
         connector.handle_update.assert_called_once()
@@ -355,10 +352,8 @@ class TestTelegramPollingBot:
         bot._api.get_updates = AsyncMock(side_effect=side_effect)
 
         async def _run_briefly() -> None:
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await bot.run()
-            except asyncio.CancelledError:
-                pass
 
         with patch("asyncio.sleep", side_effect=_noop_sleep):
             await _run_briefly()
@@ -386,10 +381,8 @@ class TestTelegramPollingBot:
         bot._api.get_updates = AsyncMock(side_effect=side_effect)
 
         async def _run_briefly() -> None:
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await bot.run()
-            except asyncio.CancelledError:
-                pass
 
         with patch("asyncio.sleep", side_effect=_noop_sleep):
             await _run_briefly()
@@ -405,7 +398,6 @@ class TestTelegramPollingBot:
 class TestTaggingConnector:
     async def test_tags_injected_into_benchmark(self, tmp_path):
         from benchmark.agents.registry import AgentRegistry
-        from benchmark.models.domain import DeploymentType
         from benchmark.runner.config import RunnerConfig
         from benchmark.runner.engine import BenchmarkRunner
         from benchmark.storage.manager import StorageManager

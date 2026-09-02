@@ -7,13 +7,12 @@ Skips agents with missing API keys and connectors with missing bot tokens.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import structlog
 
-from benchmark.agents.base import AgentAdapter
 from benchmark.agents.hermes import HermesAdapter
 from benchmark.agents.openai_compatible import OpenAICompatibleAdapter
 from benchmark.agents.openclaw import OpenClawAdapter
@@ -28,6 +27,11 @@ from benchmark.report.generator import ReportGenerator
 from benchmark.runner.config import RunnerConfig
 from benchmark.runner.engine import BenchmarkRunner, DeploymentResourceConfig
 from benchmark.storage.manager import StorageManager
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from benchmark.agents.base import AgentAdapter
 
 logger = structlog.get_logger(__name__)
 

@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 from unittest.mock import patch
 
-import pytest
-
 from benchmark.cli.wiring import (
     AppContext,
     StubDiscordAttachmentClient,
@@ -15,7 +13,6 @@ from benchmark.cli.wiring import (
 )
 from benchmark.config.settings import Settings
 from benchmark.models.domain import DeploymentType
-
 
 # ---------------------------------------------------------------------------
 # Stub clients
