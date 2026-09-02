@@ -201,29 +201,34 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
             continue
         api_key: str | None = item.get("api_key") or None
         deployment_type = _resolve_deployment_type(item.get("deployment_type", "local_docker"))
-        _name = name
-        _endpoint = endpoint
-        _model = model
-        _api_key = api_key
-        specs.append(
-            _AgentWireSpec(
-                name=_name,
-                endpoint=_endpoint,
-                deployment_type=deployment_type,
-                factory=lambda n=_name, e=_endpoint, m=_model, k=_api_key: OpenAICompatibleAdapter(
+
+        def _make_factory(
+            n: str, e: str, m: str, k: str | None, sk: str | None
+        ) -> "Callable[[], AgentAdapter]":
+            def _factory() -> AgentAdapter:
+                return OpenAICompatibleAdapter(
                     endpoint=e,
                     model=m,
                     agent_name=n,
                     agent_version="1.0.0",
                     api_key=k,
-                    signing_key=signing_key,
-                ),
+                    signing_key=sk,
+                )
+
+            return _factory
+
+        specs.append(
+            _AgentWireSpec(
+                name=name,
+                endpoint=endpoint,
+                deployment_type=deployment_type,
+                factory=_make_factory(name, endpoint, model, api_key, signing_key),
                 cpu_cores=item.get("cpu_cores"),
                 memory_mb=item.get("memory_mb"),
                 cost_per_hour=item.get("cost_per_hour"),
             )
         )
-        logger.debug("agents_json_item_loaded", name=_name, endpoint=_endpoint)
+        logger.debug("agents_json_item_loaded", name=name, endpoint=endpoint)
 
     return specs
 
