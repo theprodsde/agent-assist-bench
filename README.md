@@ -433,8 +433,12 @@ Open-source project published under [github.com/theprodsde/agent-assist-bench](h
 
 ---
 
-## Feedback
+## Community & Discussions
 
-- Found a bug? [Open an issue](https://github.com/theprodsde/agent-assist-bench/issues)
-- Want to contribute? See [CONTRIBUTING.md](CONTRIBUTING.md)
-- Questions? Discuss in [Discussions](https://github.com/theprodsde/agent-assist-bench/discussions)
+| | |
+|--|--|
+| 💬 **Questions / ideas** | [GitHub Discussions](https://github.com/theprodsde/agent-assist-bench/discussions) — ask anything, share your 30-day results, propose new frameworks |
+| 🐛 **Bug reports** | [Open an issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — use the bug report template |
+| 🤖 **Add an agent** | [New agent issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — or just use `BENCH_AGENTS_JSON` for zero-code setup |
+| ✨ **Feature requests** | [Open an issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — use the feature request template |
+| 🤝 **Contributing** | See [CONTRIBUTING.md](CONTRIBUTING.md) — includes the full agent adapter guide |

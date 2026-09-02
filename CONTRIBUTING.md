@@ -86,7 +86,7 @@ For large doc restructures, open an Issue first.
 
 ### 🧪 Tests
 
-The codebase has 266 unit tests. Help us add more:
+The codebase has 505 tests (unit, property-based, integration). Help us add more:
 
 - Test new features you add
 - Add regression tests for bugs you fix
@@ -153,57 +153,163 @@ tests/
 
 ## Adding a New Agent
 
-To add support for a new agent framework:
+There are two paths depending on how non-standard the framework is.
 
-### 1. Create an adapter in `benchmark/agents/`
+---
 
-```python
-# benchmark/agents/myagent.py
-from benchmark.agents.openai_compatible import OpenAICompatibleAdapter
+### Path A — Zero code (any standard OpenAI-compatible endpoint)
 
-class MyAgentAdapter(OpenAICompatibleAdapter):
-    @property
-    def name(self) -> str:
-        return "MyAgent"
-    
-    @property
-    def version(self) -> str:
-        return "1.0.0"
-    
-    # Override defaults if needed
-    async def health_check(self) -> bool:
-        # Custom health check logic
-        return await super().health_check()
+If the framework exposes `/v1/chat/completions` (Ollama, vLLM, LiteLLM, LibreChat,
+Open WebUI, and most modern agent servers do), just add it to `.env`:
+
+```env
+BENCH_AGENTS_JSON=[{"name":"my-framework","endpoint":"http://localhost:PORT/v1","model":"model-name","api_key":"optional-key"}]
 ```
 
-### 2. Register in `benchmark/agents/registry.py`
+No code changes needed. Multiple agents:
+
+```env
+BENCH_AGENTS_JSON=[
+  {"name":"ollama-llama3","endpoint":"http://localhost:11434/v1","model":"llama3"},
+  {"name":"librechat","endpoint":"http://localhost:9000/v1","model":"gpt-4o","api_key":"sk-..."}
+]
+```
+
+This is the right path for 95% of frameworks. Only use Path B if you need something
+the OpenAI API contract can't express (custom auth scheme, non-standard response
+format, framework-specific pre/post-processing, etc.).
+
+---
+
+### Path B — Custom adapter (~80 lines)
+
+Use **composition**, not inheritance. The existing `HermesAdapter` and `OpenClawAdapter`
+are the canonical examples — both delegate all HTTP work to `OpenAICompatibleAdapter`
+via `self._inner` and simply provide agent-specific identity and logging context.
+
+#### 1. Create `benchmark/agents/myagent.py`
+
+```python
+from __future__ import annotations
+from typing import TYPE_CHECKING
+import structlog
+from benchmark.agents.openai_compatible import OpenAICompatibleAdapter
+
+if TYPE_CHECKING:
+    import httpx
+    from benchmark.agents.base import AgentRequest, AgentResponse
+
+logger = structlog.get_logger()
+
+class MyAgentAdapter:
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        api_key: str | None = None,
+        signing_key: str | None = None,
+        model: str = "my-default-model",
+        timeout: float = 120.0,
+        client: "httpx.AsyncClient | None" = None,
+    ) -> None:
+        self._inner = OpenAICompatibleAdapter(
+            endpoint=endpoint,
+            model=model,
+            agent_name="myagent",
+            agent_version="1.0.0",
+            api_key=api_key,
+            signing_key=signing_key,
+            timeout=timeout,
+            client=client,
+        )
+        self._log = logger.bind(agent_name="myagent")
+
+    @property
+    def name(self) -> str:
+        return self._inner.name
+
+    @property
+    def version(self) -> str:
+        return self._inner.version
+
+    async def execute(self, request: "AgentRequest") -> "AgentResponse":
+        return await self._inner.execute(request)
+
+    async def health_check(self) -> bool:
+        return await self._inner.health_check()
+
+    async def close(self) -> None:
+        await self._inner.close()
+```
+
+#### 2. Add settings in `benchmark/config/settings.py`
+
+```python
+myagent_endpoint: str = "http://localhost:9000"
+myagent_api_key: SecretStr = SecretStr("")
+myagent_deployment_type: str = "local_docker"
+```
+
+#### 3. Wire it in `benchmark/cli/wiring.py`
+
+Add a block inside `_build_agent_specs()`, following the Hermes/OpenClaw pattern:
 
 ```python
 from benchmark.agents.myagent import MyAgentAdapter
 
-ADAPTERS = {
-    "myagent": MyAgentAdapter,
-    # ...
-}
+if myagent_key := settings.myagent_api_key.get_secret_value():
+    specs.append(
+        _AgentWireSpec(
+            name="myagent",
+            endpoint=settings.myagent_endpoint,
+            deployment_type=_resolve_deployment_type(settings.myagent_deployment_type),
+            factory=lambda: MyAgentAdapter(
+                endpoint=settings.myagent_endpoint,
+                api_key=myagent_key,
+                signing_key=signing_key,
+            ),
+        )
+    )
+else:
+    logger.warning("agent_skipped_missing_api_key", agent="myagent")
 ```
 
-### 3. Add tests in `tests/unit/agents/test_myagent.py`
+#### 4. Add tests in `tests/unit/test_myagent.py`
 
 ```python
 import pytest
+import httpx
+from unittest.mock import AsyncMock, patch
 from benchmark.agents.myagent import MyAgentAdapter
+from benchmark.agents.base import AgentRequest
 
-def test_myagent_adapter():
-    adapter = MyAgentAdapter(endpoint="http://localhost:9000", api_key="test")
-    assert adapter.name == "MyAgent"
+def test_myagent_name_and_version():
+    adapter = MyAgentAdapter(endpoint="http://localhost:9000/v1")
+    assert adapter.name == "myagent"
     assert adapter.version == "1.0.0"
+
+async def test_myagent_execute_delegates_to_inner(respx_mock):
+    respx_mock.post("http://localhost:9000/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "choices": [{"message": {"content": "hello"}}]
+        })
+    )
+    adapter = MyAgentAdapter(endpoint="http://localhost:9000/v1")
+    resp = await adapter.execute(AgentRequest(prompt="hi"))
+    assert resp.content == "hello"
+    assert not resp.errors
 ```
 
-### 4. Update documentation
+#### 5. Update `.env.example` and docs
 
-- Add to [CLI.md](CLI.md)
-- Update [DEPLOYMENT.md](DEPLOYMENT.md) if it requires special setup
-- Update [README.md](README.md) status table
+- Add the new `BENCH_MYAGENT_*` vars to `.env.example`
+- Update [README.md](README.md) Key Features if relevant
+
+---
+
+> **Opening a PR to add an adapter?**
+> Use the [new agent issue template](.github/ISSUE_TEMPLATE/new_agent.yml) to track it,
+> and link the issue in your PR description.
 
 ---
 

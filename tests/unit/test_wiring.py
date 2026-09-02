@@ -374,7 +374,10 @@ class TestAgentsJson:
             await ctx.storage.close()
 
     async def test_non_list_json_skipped(self, tmp_path):
-        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": '{"name":"oops","endpoint":"x","model":"y"}'}
+        env = {
+            **_base_env(tmp_path),
+            "BENCH_AGENTS_JSON": '{"name":"oops","endpoint":"x","model":"y"}',
+        }
         with patch.dict(os.environ, env, clear=True):
             settings = Settings(_env_file=None)  # type: ignore[call-arg]
             ctx = await create_context(settings)

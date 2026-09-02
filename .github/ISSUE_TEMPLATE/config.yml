@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question / start a discussion
+    url: https://github.com/theprodsde/agent-assist-bench/discussions
+    about: Use Discussions for questions, ideas, and sharing your benchmark results.
+  - name: Read the docs
+    url: https://github.com/theprodsde/agent-assist-bench/tree/main/docs
+    about: Architecture, deployment guide, CLI reference, and ADRs.

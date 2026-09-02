@@ -1,0 +1,49 @@
+name: "✨ Feature request"
+description: Suggest an improvement or new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For questions or early-stage ideas, use [Discussions](https://github.com/theprodsde/agent-assist-bench/discussions) first.
+        Open a feature request issue once you have a concrete proposal.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the situation where you hit a limitation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to see added or changed?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - CLI commands
+        - Agent adapters
+        - Report / evaluation
+        - Storage / export
+        - Connectors (Telegram / Discord)
+        - Deployment / Docker
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willing_to_pr
+    attributes:
+      label: Are you willing to open a PR?
+      options:
+        - label: Yes
+        - label: No

@@ -1,0 +1,66 @@
+name: "🤖 Add agent adapter: [FrameworkName]"
+description: Request or contribute support for a new AI agent framework
+labels: ["new-agent", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Adding a new agent is the most valuable contribution to this project.
+        Each new adapter makes the benchmark reachable to a whole new community.
+
+        **Before opening this issue:** check if `BENCH_AGENTS_JSON` already covers your use case.
+        If the framework exposes a standard `/v1/chat/completions` endpoint (Ollama, vLLM, LiteLLM,
+        LibreChat, Open WebUI, etc.), you can benchmark it *right now* without any code:
+        ```
+        BENCH_AGENTS_JSON=[{"name":"my-framework","endpoint":"http://localhost:PORT/v1","model":"model-name"}]
+        ```
+        Only open this issue if you need custom protocol handling beyond the OpenAI API contract.
+
+  - type: input
+    id: framework_name
+    attributes:
+      label: Framework name
+      placeholder: "e.g. AutoGen, LangGraph Server, CrewAI, AgentGPT"
+    validations:
+      required: true
+
+  - type: input
+    id: framework_url
+    attributes:
+      label: Framework homepage / repo
+      placeholder: "https://github.com/..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: api_type
+    attributes:
+      label: API type
+      description: What API does this framework expose?
+      options:
+        - OpenAI-compatible (/v1/chat/completions)
+        - Custom REST API
+        - gRPC
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: why_custom
+    attributes:
+      label: Why does this need a custom adapter?
+      description: |
+        Explain what the framework does that BENCH_AGENTS_JSON can't handle.
+        e.g. custom auth, non-standard response format, streaming only, tool calls required, etc.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willing_to_implement
+    attributes:
+      label: Are you willing to implement this?
+      description: |
+        Implementing a custom adapter is typically ~80 lines. See CONTRIBUTING.md for the exact pattern.
+      options:
+        - label: Yes, I'll open a PR
+        - label: No, I'm requesting it
