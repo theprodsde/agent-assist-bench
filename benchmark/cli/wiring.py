@@ -7,11 +7,13 @@ Skips agents with missing API keys and connectors with missing bot tokens.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import structlog
 
+from benchmark.agents.base import AgentAdapter
 from benchmark.agents.hermes import HermesAdapter
 from benchmark.agents.openai_compatible import OpenAICompatibleAdapter
 from benchmark.agents.openclaw import OpenClawAdapter
@@ -55,6 +57,100 @@ def _resolve_deployment_type(value: str) -> DeploymentType:
         )
         return DeploymentType.LOCAL_DOCKER
     return deployment
+
+
+@dataclass
+class _AgentWireSpec:
+    """Config-driven spec for a single agent to be wired into the registry."""
+
+    name: str
+    endpoint: str
+    deployment_type: DeploymentType
+    factory: Callable[[], AgentAdapter]
+    cpu_cores: float | None = None
+    memory_mb: float | None = None
+    cost_per_hour: float | None = None
+
+
+def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_AgentWireSpec]:
+    """Build agent wire specs from settings. Agents with empty API keys are skipped."""
+    specs: list[_AgentWireSpec] = []
+
+    if hermes_key := settings.hermes_api_key.get_secret_value():
+        specs.append(
+            _AgentWireSpec(
+                name="hermes",
+                endpoint=settings.hermes_endpoint,
+                deployment_type=_resolve_deployment_type(settings.hermes_deployment_type),
+                factory=lambda: HermesAdapter(
+                    endpoint=settings.hermes_endpoint,
+                    api_key=hermes_key,
+                    signing_key=signing_key,
+                ),
+                cpu_cores=settings.hermes_cpu_cores,
+                memory_mb=settings.hermes_memory_mb,
+                cost_per_hour=settings.hermes_cost_per_hour,
+            )
+        )
+    else:
+        logger.warning("agent_skipped_missing_api_key", agent="hermes")
+
+    if openclaw_key := settings.openclaw_api_key.get_secret_value():
+        specs.append(
+            _AgentWireSpec(
+                name="openclaw",
+                endpoint=settings.openclaw_endpoint,
+                deployment_type=_resolve_deployment_type(settings.openclaw_deployment_type),
+                factory=lambda: OpenClawAdapter(
+                    endpoint=settings.openclaw_endpoint,
+                    api_key=openclaw_key,
+                    signing_key=signing_key,
+                ),
+                cpu_cores=settings.openclaw_cpu_cores,
+                memory_mb=settings.openclaw_memory_mb,
+                cost_per_hour=settings.openclaw_cost_per_hour,
+            )
+        )
+    else:
+        logger.warning("agent_skipped_missing_api_key", agent="openclaw")
+
+    if nvidia_key := settings.nvidia_api_key.get_secret_value():
+        _nvidia_endpoint = "https://integrate.api.nvidia.com/v1"
+        _nvidia_model = "nvidia/nemotron-3-super-120b-a12b"
+        specs.append(
+            _AgentWireSpec(
+                name="nemotron-reasoning",
+                endpoint=_nvidia_endpoint,
+                deployment_type=DeploymentType.MANAGED_CONTAINER,
+                factory=lambda: OpenAICompatibleAdapter(
+                    endpoint=_nvidia_endpoint,
+                    model=_nvidia_model,
+                    agent_name="nemotron-reasoning",
+                    agent_version="1.0.0",
+                    api_key=nvidia_key,
+                    signing_key=signing_key,
+                ),
+            )
+        )
+        specs.append(
+            _AgentWireSpec(
+                name="nemotron-concise",
+                endpoint=_nvidia_endpoint,
+                deployment_type=DeploymentType.LOCAL_DOCKER,
+                factory=lambda: OpenAICompatibleAdapter(
+                    endpoint=_nvidia_endpoint,
+                    model=_nvidia_model,
+                    agent_name="nemotron-concise",
+                    agent_version="1.0.0",
+                    api_key=nvidia_key,
+                    signing_key=signing_key,
+                ),
+            )
+        )
+    else:
+        logger.warning("nvidia_agents_skipped_missing_api_key")
+
+    return specs
 
 
 class StubTelegramApiClient:
@@ -127,100 +223,26 @@ async def create_context(settings: Settings | None = None) -> AppContext:
     # Agent registry
     registry = AgentRegistry()
     execution_order: list[tuple[str, DeploymentType]] = []
+    deployment_configs: dict[str, DeploymentResourceConfig] = {}
 
-    # Resolve signing key (shared across all adapters)
     signing_key = settings.signing_key.get_secret_value() or None
 
-    # Register Hermes if API key is available
-    hermes_key = settings.hermes_api_key.get_secret_value()
-    if hermes_key:
-        hermes_deploy = _resolve_deployment_type(settings.hermes_deployment_type)
-        adapter = HermesAdapter(
-            endpoint=settings.hermes_endpoint,
-            api_key=hermes_key,
-            signing_key=signing_key,
-        )
-        registry.register(adapter, hermes_deploy, settings.hermes_endpoint)
-        execution_order.append(("hermes", hermes_deploy))
+    for spec in _build_agent_specs(settings, signing_key):
+        adapter = spec.factory()
+        registry.register(adapter, spec.deployment_type, spec.endpoint)
+        execution_order.append((spec.name, spec.deployment_type))
+        if spec.cpu_cores or spec.memory_mb or spec.cost_per_hour:
+            deployment_configs[spec.name] = DeploymentResourceConfig(
+                cpu_cores=spec.cpu_cores,
+                memory_mb=spec.memory_mb,
+                cost_per_hour=spec.cost_per_hour,
+            )
         logger.info(
             "agent_registered",
-            agent="hermes",
-            endpoint=settings.hermes_endpoint,
-            deployment=hermes_deploy.value,
+            agent=spec.name,
+            endpoint=spec.endpoint,
+            deployment=spec.deployment_type.value,
         )
-    else:
-        logger.warning("agent_skipped_missing_api_key", agent="hermes")
-
-    # Register OpenClaw if API key is available
-    openclaw_key = settings.openclaw_api_key.get_secret_value()
-    if openclaw_key:
-        openclaw_deploy = _resolve_deployment_type(settings.openclaw_deployment_type)
-        adapter_oc = OpenClawAdapter(
-            endpoint=settings.openclaw_endpoint,
-            api_key=openclaw_key,
-            signing_key=signing_key,
-        )
-        registry.register(adapter_oc, openclaw_deploy, settings.openclaw_endpoint)
-        execution_order.append(("openclaw", openclaw_deploy))
-        logger.info(
-            "agent_registered",
-            agent="openclaw",
-            endpoint=settings.openclaw_endpoint,
-            deployment=openclaw_deploy.value,
-        )
-    else:
-        logger.warning("agent_skipped_missing_api_key", agent="openclaw")
-
-    # Register NVIDIA Nemotron agents (direct API, no Docker needed)
-    # Requires a separate BENCH_NVIDIA_API_KEY — NOT the Hermes bearer token.
-    # Leave unset (or empty) to run only the framework agents (Hermes vs OpenClaw).
-    nvidia_api_key = (
-        settings.nvidia_api_key.get_secret_value() if hasattr(settings, "nvidia_api_key") else ""
-    )
-    if nvidia_api_key:
-        # Agent 1: Reasoning-focused (verbose system prompt)
-        adapter_reasoning = OpenAICompatibleAdapter(
-            endpoint="https://integrate.api.nvidia.com/v1",
-            model="nvidia/nemotron-3-super-120b-a12b",
-            agent_name="nemotron-reasoning",
-            agent_version="1.0.0",
-            api_key=nvidia_api_key,
-            signing_key=signing_key,
-        )
-        registry.register(
-            adapter_reasoning,
-            DeploymentType.MANAGED_CONTAINER,
-            "https://integrate.api.nvidia.com/v1",
-        )
-        execution_order.append(("nemotron-reasoning", DeploymentType.MANAGED_CONTAINER))
-        logger.info(
-            "agent_registered",
-            agent="nemotron-reasoning",
-            endpoint="https://integrate.api.nvidia.com/v1",
-            deployment="managed_container",
-        )
-
-        # Agent 2: Concise-focused (brief system prompt)
-        adapter_concise = OpenAICompatibleAdapter(
-            endpoint="https://integrate.api.nvidia.com/v1",
-            model="nvidia/nemotron-3-super-120b-a12b",
-            agent_name="nemotron-concise",
-            agent_version="1.0.0",
-            api_key=nvidia_api_key,
-            signing_key=signing_key,
-        )
-        registry.register(
-            adapter_concise, DeploymentType.LOCAL_DOCKER, "https://integrate.api.nvidia.com/v1"
-        )
-        execution_order.append(("nemotron-concise", DeploymentType.LOCAL_DOCKER))
-        logger.info(
-            "agent_registered",
-            agent="nemotron-concise",
-            endpoint="https://integrate.api.nvidia.com/v1",
-            deployment="local_docker",
-        )
-    else:
-        logger.warning("nvidia_agents_skipped_missing_api_key")
 
     # Runner
     runner_config = RunnerConfig(
@@ -228,26 +250,6 @@ async def create_context(settings: Settings | None = None) -> AppContext:
         delay_between_seconds=settings.delay_seconds,
         timeout_seconds=settings.timeout_seconds,
     )
-
-    # Build deployment resource configs from settings
-    deployment_configs: dict[str, DeploymentResourceConfig] = {}
-    if settings.hermes_cpu_cores or settings.hermes_memory_mb or settings.hermes_cost_per_hour:
-        deployment_configs["hermes"] = DeploymentResourceConfig(
-            cpu_cores=settings.hermes_cpu_cores,
-            memory_mb=settings.hermes_memory_mb,
-            cost_per_hour=settings.hermes_cost_per_hour,
-        )
-    if (
-        settings.openclaw_cpu_cores
-        or settings.openclaw_memory_mb
-        or settings.openclaw_cost_per_hour
-    ):
-        deployment_configs["openclaw"] = DeploymentResourceConfig(
-            cpu_cores=settings.openclaw_cpu_cores,
-            memory_mb=settings.openclaw_memory_mb,
-            cost_per_hour=settings.openclaw_cost_per_hour,
-        )
-
     runner = BenchmarkRunner(
         registry=registry,
         storage=storage,
