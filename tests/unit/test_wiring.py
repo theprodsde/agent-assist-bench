@@ -280,3 +280,141 @@ class TestCreateContext:
             assert isinstance(ctx, AppContext)
         finally:
             await ctx.storage.close()
+
+
+# ---------------------------------------------------------------------------
+# BENCH_AGENTS_JSON — generic agent registration
+# ---------------------------------------------------------------------------
+
+
+class TestAgentsJson:
+    async def test_single_agent_registered(self, tmp_path):
+        agents_json = (
+            '[{"name":"librechat","endpoint":"http://localhost:9000/v1","model":"gpt-4o",'
+            '"api_key":"sk-test","deployment_type":"local_docker"}]'
+        )
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": agents_json}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            names = [name for name, _ in ctx.registry.list_available()]
+            assert "librechat" in names
+        finally:
+            await ctx.storage.close()
+
+    async def test_multiple_agents_registered(self, tmp_path):
+        agents_json = (
+            '[{"name":"agent-a","endpoint":"http://localhost:9001/v1","model":"llama3","api_key":"k1"},'
+            '{"name":"agent-b","endpoint":"http://localhost:9002/v1","model":"mistral","api_key":"k2"}]'
+        )
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": agents_json}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            names = [name for name, _ in ctx.registry.list_available()]
+            assert "agent-a" in names
+            assert "agent-b" in names
+        finally:
+            await ctx.storage.close()
+
+    async def test_json_agents_added_alongside_hermes(self, tmp_path):
+        agents_json = '[{"name":"extra","endpoint":"http://localhost:9003/v1","model":"phi3"}]'
+        env = {
+            **_base_env(tmp_path),
+            "BENCH_HERMES_API_KEY": "hermes-key",
+            "BENCH_AGENTS_JSON": agents_json,
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            names = [name for name, _ in ctx.registry.list_available()]
+            assert "hermes" in names
+            assert "extra" in names
+        finally:
+            await ctx.storage.close()
+
+    async def test_invalid_json_skips_gracefully(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": "not-json"}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            assert ctx.registry.list_available() == []
+        finally:
+            await ctx.storage.close()
+
+    async def test_item_missing_required_fields_skipped(self, tmp_path):
+        agents_json = '[{"name":"incomplete"}]'
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": agents_json}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            assert ctx.registry.list_available() == []
+        finally:
+            await ctx.storage.close()
+
+    async def test_empty_agents_json_skipped(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": ""}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            assert ctx.registry.list_available() == []
+        finally:
+            await ctx.storage.close()
+
+    async def test_non_list_json_skipped(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": '{"name":"oops","endpoint":"x","model":"y"}'}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            assert ctx.registry.list_available() == []
+        finally:
+            await ctx.storage.close()
+
+    async def test_resource_config_from_json(self, tmp_path):
+        agents_json = (
+            '[{"name":"heavy","endpoint":"http://localhost:9004/v1","model":"llama3",'
+            '"cpu_cores":8,"memory_mb":16384,"cost_per_hour":1.2}]'
+        )
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": agents_json}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            assert ctx.runner._deployment_configs is not None
+            rc = ctx.runner._deployment_configs["heavy"]
+            assert rc.cpu_cores == 8.0
+            assert rc.memory_mb == 16384.0
+            assert rc.cost_per_hour == 1.2
+        finally:
+            await ctx.storage.close()
+
+    async def test_managed_container_deployment_type_in_json(self, tmp_path):
+        agents_json = (
+            '[{"name":"cloud-agent","endpoint":"https://api.example.com/v1","model":"gpt-4o",'
+            '"api_key":"k","deployment_type":"managed_container"}]'
+        )
+        env = {**_base_env(tmp_path), "BENCH_AGENTS_JSON": agents_json}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+            ctx = await create_context(settings)
+
+        try:
+            order = ctx.runner._config.execution_order
+            assert ("cloud-agent", DeploymentType.MANAGED_CONTAINER) in order
+        finally:
+            await ctx.storage.close()

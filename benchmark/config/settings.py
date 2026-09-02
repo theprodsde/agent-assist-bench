@@ -74,5 +74,13 @@ class Settings(BaseSettings):
     # Example: BENCH_TELEGRAM_ALLOWED_CHAT_IDS=123456789,987654321
     telegram_allowed_chat_ids: str = ""
 
+    # Generic agents — define any number of OpenAI-compatible agents in JSON.
+    # Each item must have: name, endpoint, model (str); optional: api_key, deployment_type,
+    # cpu_cores, memory_mb, cost_per_hour.
+    # Example (single-line, no real newlines inside the JSON value):
+    #   BENCH_AGENTS_JSON=[{"name":"librechat","endpoint":"http://localhost:9000/v1","model":"gpt-4o","api_key":"sk-...","deployment_type":"local_docker"}]
+    # Agents defined here are registered in addition to any Hermes/OpenClaw keys above.
+    agents_json: str = ""
+
     # Logging
     log_level: str = "INFO"

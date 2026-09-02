@@ -7,9 +7,10 @@ Skips agents with missing API keys and connectors with missing bot tokens.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -153,6 +154,76 @@ def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_Age
         )
     else:
         logger.warning("nvidia_agents_skipped_missing_api_key")
+
+    specs.extend(_build_json_agent_specs(settings, signing_key))
+    return specs
+
+
+def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list[_AgentWireSpec]:
+    """Parse BENCH_AGENTS_JSON and build wire specs for each entry.
+
+    Each JSON item must have: name (str), endpoint (str), model (str).
+    Optional: api_key (str), deployment_type (str), cpu_cores (float),
+    memory_mb (float), cost_per_hour (float).
+
+    Entries with a duplicate name+deployment_type pair override earlier ones
+    (same as AgentRegistry.register semantics).
+    """
+    raw = settings.agents_json.strip()
+    if not raw:
+        return []
+
+    try:
+        items: list[Any] = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.error("agents_json_parse_error", error=str(exc))
+        return []
+
+    if not isinstance(items, list):
+        logger.error("agents_json_must_be_list")
+        return []
+
+    specs: list[_AgentWireSpec] = []
+    for item in items:
+        if not isinstance(item, dict):
+            logger.warning("agents_json_item_skipped_not_dict", item=item)
+            continue
+        name = item.get("name", "").strip()
+        endpoint = item.get("endpoint", "").strip()
+        model = item.get("model", "").strip()
+        if not name or not endpoint or not model:
+            logger.warning(
+                "agents_json_item_skipped_missing_fields",
+                name=name,
+                endpoint=endpoint,
+                model=model,
+            )
+            continue
+        api_key: str | None = item.get("api_key") or None
+        deployment_type = _resolve_deployment_type(item.get("deployment_type", "local_docker"))
+        _name = name
+        _endpoint = endpoint
+        _model = model
+        _api_key = api_key
+        specs.append(
+            _AgentWireSpec(
+                name=_name,
+                endpoint=_endpoint,
+                deployment_type=deployment_type,
+                factory=lambda n=_name, e=_endpoint, m=_model, k=_api_key: OpenAICompatibleAdapter(
+                    endpoint=e,
+                    model=m,
+                    agent_name=n,
+                    agent_version="1.0.0",
+                    api_key=k,
+                    signing_key=signing_key,
+                ),
+                cpu_cores=item.get("cpu_cores"),
+                memory_mb=item.get("memory_mb"),
+                cost_per_hour=item.get("cost_per_hour"),
+            )
+        )
+        logger.debug("agents_json_item_loaded", name=_name, endpoint=_endpoint)
 
     return specs
 

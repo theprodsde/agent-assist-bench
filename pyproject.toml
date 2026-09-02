@@ -4,9 +4,22 @@ version = "0.1.0"
 description = "An open-source evaluation framework for benchmarking AI assistants on real-world engineering workflows"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
-authors = [{ name = "TheProdSDE" }]
-
+license = { file = "LICENSE" }
+authors = [{ name = "TheProdSDE", email = "theprodsde@users.noreply.github.com" }]
+keywords = ["ai", "agents", "benchmark", "evaluation", "llm", "openai"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
 dependencies = [
     "fastapi>=0.100.0",
     "pydantic>=2.0.0",
@@ -17,6 +30,13 @@ dependencies = [
     "structlog>=23.0.0",
     "typer>=0.9.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/theprodsde/agent-assist-bench"
+Repository = "https://github.com/theprodsde/agent-assist-bench"
+Documentation = "https://github.com/theprodsde/agent-assist-bench/tree/main/docs"
+"Bug Tracker" = "https://github.com/theprodsde/agent-assist-bench/issues"
+Changelog = "https://github.com/theprodsde/agent-assist-bench/releases"
 
 [project.optional-dependencies]
 dev = [
