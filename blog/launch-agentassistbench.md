@@ -258,7 +258,7 @@ update. That time-series data doesn't exist anywhere else.
 
 ---
 
-*AgentAssistBench is MIT licensed, self-hosted, and takes about 5 minutes to set up.
+*AgentAssistBench is Apache 2.0 licensed (patent rights included), self-hosted, and takes about 5 minutes to set up.
 Built by [TheProdSDE](https://github.com/TheProdSDE).*
 
 *Star the repo if you find it useful — and share your 30-day results when you have them.*

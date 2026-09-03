@@ -4,7 +4,7 @@
 [![Lint & Type Check](https://github.com/theprodsde/agent-assist-bench/actions/workflows/lint.yml/badge.svg)](https://github.com/theprodsde/agent-assist-bench/actions/workflows/lint.yml)
 [![codecov](https://codecov.io/gh/theprodsde/agent-assist-bench/branch/main/graph/badge.svg)](https://codecov.io/gh/theprodsde/agent-assist-bench)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 A personal evaluation harness for choosing your AI agent stack. Run your actual daily tasks against any number of OpenAI-compatible agents, rate the responses yourself, and get data-driven recommendations after as few as 7 days — not synthetic benchmarks, not LLM-as-judge.
 
@@ -204,7 +204,7 @@ See [Telegram Bot](#telegram-bot) section for full setup.
 
 ✅ **Telegram bot** — Send prompts from your phone, get all agent responses back side-by-side
 
-✅ **Self-hosted, MIT license** — Your data stays local in SQLite; no vendor lock-in
+✅ **Self-hosted, Apache 2.0 license** — Your data stays local in SQLite; no vendor lock-in; patent rights explicitly granted
 
 ---
 
@@ -410,7 +410,7 @@ python3 -c "from benchmark.config.settings import Settings; s = Settings(); prin
 
 ## License
 
-MIT — See [LICENSE](LICENSE)
+Apache 2.0 — See [LICENSE](LICENSE)
 
 ---
 

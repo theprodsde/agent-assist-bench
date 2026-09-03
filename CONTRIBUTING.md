@@ -367,7 +367,7 @@ ruff check . && ruff format --check . && mypy benchmark/ && pytest tests/ -v
 
 ## Licensing
 
-By submitting a contribution, you agree that it will be licensed under the same MIT license as the project.
+By submitting a contribution, you agree that it will be licensed under the Apache License 2.0, the same license as this project. You also grant the patent rights described in Section 3 of the Apache License 2.0 for any patents your contribution may cover.
 
 ---
 
