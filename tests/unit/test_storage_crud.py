@@ -536,15 +536,20 @@ class TestListBenchmarksFiltering:
         all_ids = [r.id for r in page1 + page2 + page3]
         assert len(set(all_ids)) == 5
 
-    async def test_limit_clamped_to_max_200(self, storage):
-        """Limit > 200 is clamped to 200."""
+    async def test_limit_above_200_is_preserved(self, storage):
+        """Limit > 200 is no longer capped — large periods need more rows."""
         filters = BenchmarkFilters(limit=500)
-        assert filters.limit == 200
+        assert filters.limit == 500
 
-    async def test_limit_clamped_to_min_1(self, storage):
-        """Limit < 1 is clamped to 1."""
+    async def test_limit_zero_means_unlimited(self, storage):
+        """limit=0 is the sentinel for 'fetch all rows' (maps to SQL LIMIT -1)."""
         filters = BenchmarkFilters(limit=0)
-        assert filters.limit == 1
+        assert filters.limit == 0
+
+    async def test_negative_limit_clamped_to_zero(self, storage):
+        """Negative limit is clamped to 0 (unlimited)."""
+        filters = BenchmarkFilters(limit=-5)
+        assert filters.limit == 0
 
     async def test_default_limit_is_50(self, storage):
         """Default limit is 50."""

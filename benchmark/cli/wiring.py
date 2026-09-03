@@ -279,33 +279,18 @@ class AppContext:
     discord_connector: DiscordConnector | None = None
 
 
-async def create_context(settings: Settings | None = None) -> AppContext:
-    """Build and initialize all application components.
+def _assemble_context(settings: Settings, storage: StorageManager) -> AppContext:
+    """Wire all components into an AppContext given an initialised StorageManager.
 
-    Reads agent endpoints and API keys from settings. Agents whose keys
-    are missing are skipped with a warning (Req 11.5).
-
-    Endpoint configuration:
-      BENCH_HERMES_ENDPOINT  — URL where Hermes is deployed (VM, ACA, or local Docker)
-      BENCH_OPENCLAW_ENDPOINT — URL where OpenClaw is deployed
-
-    Connector configuration:
-      BENCH_TELEGRAM_BOT_TOKEN — enables TelegramConnector wiring
-      BENCH_DISCORD_BOT_TOKEN  — enables DiscordConnector wiring
+    This is a pure synchronous function so that coverage can trace every branch
+    regardless of the Python / coverage version. create_context() calls this
+    after the single async step (await storage.initialize()).
     """
-    if settings is None:
-        settings = Settings()
+    signing_key = settings.signing_key.get_secret_value() or None
 
-    # Storage
-    storage = StorageManager(db_path=settings.db_path)
-    await storage.initialize()
-
-    # Agent registry
     registry = AgentRegistry()
     execution_order: list[tuple[str, DeploymentType]] = []
     deployment_configs: dict[str, DeploymentResourceConfig] = {}
-
-    signing_key = settings.signing_key.get_secret_value() or None
 
     for spec in _build_agent_specs(settings, signing_key):
         adapter = spec.factory()
@@ -324,7 +309,6 @@ async def create_context(settings: Settings | None = None) -> AppContext:
             deployment=spec.deployment_type.value,
         )
 
-    # Runner
     runner_config = RunnerConfig(
         execution_order=execution_order,
         delay_between_seconds=settings.delay_seconds,
@@ -337,14 +321,10 @@ async def create_context(settings: Settings | None = None) -> AppContext:
         deployment_configs=deployment_configs if deployment_configs else None,
     )
 
-    # Exporter and report generator
     exporter = DailyExporter(storage=storage, export_dir=Path(settings.export_dir))
     report_generator = ReportGenerator(storage=storage)
-
-    # Evaluation service
     evaluation_service = EvaluationService(storage=storage)
 
-    # Telegram connector (optional)
     telegram_connector: TelegramConnector | None = None
     telegram_token = settings.telegram_bot_token.get_secret_value()
     if telegram_token:
@@ -358,7 +338,6 @@ async def create_context(settings: Settings | None = None) -> AppContext:
     else:
         logger.info("connector_skipped_missing_token", connector="telegram")
 
-    # Discord connector (optional)
     discord_connector: DiscordConnector | None = None
     discord_token = settings.discord_bot_token.get_secret_value()
     if discord_token:
@@ -382,3 +361,26 @@ async def create_context(settings: Settings | None = None) -> AppContext:
         telegram_connector=telegram_connector,
         discord_connector=discord_connector,
     )
+
+
+async def create_context(settings: Settings | None = None) -> AppContext:
+    """Build and initialize all application components.
+
+    Reads agent endpoints and API keys from settings. Agents whose keys
+    are missing are skipped with a warning (Req 11.5).
+
+    Endpoint configuration:
+      BENCH_HERMES_ENDPOINT  — URL where Hermes is deployed (VM, ACA, or local Docker)
+      BENCH_OPENCLAW_ENDPOINT — URL where OpenClaw is deployed
+
+    Connector configuration:
+      BENCH_TELEGRAM_BOT_TOKEN — enables TelegramConnector wiring
+      BENCH_DISCORD_BOT_TOKEN  — enables DiscordConnector wiring
+    """
+    if settings is None:
+        settings = Settings()
+
+    storage = StorageManager(db_path=settings.db_path)
+    await storage.initialize()
+
+    return _assemble_context(settings, storage)

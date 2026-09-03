@@ -9,10 +9,12 @@ from benchmark.cli.wiring import (
     AppContext,
     StubDiscordAttachmentClient,
     StubTelegramApiClient,
+    _assemble_context,
     create_context,
 )
 from benchmark.config.settings import Settings
 from benchmark.models.domain import DeploymentType
+from benchmark.storage.manager import StorageManager
 
 # ---------------------------------------------------------------------------
 # Stub clients
@@ -421,3 +423,128 @@ class TestAgentsJson:
             assert ("cloud-agent", DeploymentType.MANAGED_CONTAINER) in order
         finally:
             await ctx.storage.close()
+
+
+# ---------------------------------------------------------------------------
+# _assemble_context — direct sync tests for the wired component graph
+# Calling the sync helper directly avoids the Python 3.11 async-frame
+# coverage gap and exercises every branch in the assembly logic.
+# ---------------------------------------------------------------------------
+
+
+class TestAssembleContext:
+    async def test_no_agents_no_connectors(self, tmp_path):
+        env = _base_env(tmp_path)
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            assert ctx.registry.list_available() == []
+            assert ctx.telegram_connector is None
+            assert ctx.discord_connector is None
+            assert ctx.runner is not None
+            assert ctx.exporter is not None
+            assert ctx.report_generator is not None
+            assert ctx.evaluation_service is not None
+        finally:
+            await storage.close()
+
+    async def test_hermes_agent_registered(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_HERMES_API_KEY": "key-h"}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            names = [n for n, _ in ctx.registry.list_available()]
+            assert "hermes" in names
+        finally:
+            await storage.close()
+
+    async def test_both_agents_registered(self, tmp_path):
+        env = {
+            **_base_env(tmp_path),
+            "BENCH_HERMES_API_KEY": "key-h",
+            "BENCH_OPENCLAW_API_KEY": "key-o",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            names = [n for n, _ in ctx.registry.list_available()]
+            assert "hermes" in names
+            assert "openclaw" in names
+        finally:
+            await storage.close()
+
+    async def test_telegram_connector_wired(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_TELEGRAM_BOT_TOKEN": "123:TOKEN"}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            assert ctx.telegram_connector is not None
+            assert ctx.discord_connector is None
+        finally:
+            await storage.close()
+
+    async def test_discord_connector_wired(self, tmp_path):
+        env = {**_base_env(tmp_path), "BENCH_DISCORD_BOT_TOKEN": "discord-token"}
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            assert ctx.discord_connector is not None
+            assert ctx.telegram_connector is None
+        finally:
+            await storage.close()
+
+    async def test_deployment_resource_config_wired(self, tmp_path):
+        env = {
+            **_base_env(tmp_path),
+            "BENCH_HERMES_API_KEY": "key-h",
+            "BENCH_HERMES_CPU_CORES": "4",
+            "BENCH_HERMES_MEMORY_MB": "8192",
+            "BENCH_HERMES_COST_PER_HOUR": "0.50",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            assert ctx.runner._deployment_configs is not None
+            rc = ctx.runner._deployment_configs["hermes"]
+            assert rc.cpu_cores == 4.0
+            assert rc.memory_mb == 8192.0
+            assert rc.cost_per_hour == 0.50
+        finally:
+            await storage.close()
+
+    async def test_execution_order_matches_registration_order(self, tmp_path):
+        env = {
+            **_base_env(tmp_path),
+            "BENCH_HERMES_API_KEY": "key-h",
+            "BENCH_OPENCLAW_API_KEY": "key-o",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = Settings(_env_file=None)  # type: ignore[call-arg]
+        storage = StorageManager(db_path=str(tmp_path / "test.db"))
+        await storage.initialize()
+        try:
+            ctx = _assemble_context(settings, storage)
+            order = ctx.runner._config.execution_order
+            hermes_idx = next(i for i, (n, _) in enumerate(order) if n == "hermes")
+            openclaw_idx = next(i for i, (n, _) in enumerate(order) if n == "openclaw")
+            assert hermes_idx < openclaw_idx
+        finally:
+            await storage.close()

@@ -97,6 +97,17 @@ markers = [
     "property: Property-based tests",
 ]
 
+[tool.coverage.run]
+source = ["benchmark"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true

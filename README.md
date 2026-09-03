@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A personal evaluation harness for choosing your AI agent stack. Run your actual daily tasks against any number of OpenAI-compatible agents, rate the responses yourself, and get data-driven recommendations after 30 days — not synthetic benchmarks, not LLM-as-judge.
+A personal evaluation harness for choosing your AI agent stack. Run your actual daily tasks against any number of OpenAI-compatible agents, rate the responses yourself, and get data-driven recommendations after as few as 7 days — not synthetic benchmarks, not LLM-as-judge.
 
 **[Repository](https://github.com/theprodsde/agent-assist-bench) · [Documentation](docs/) · [Issues](https://github.com/theprodsde/agent-assist-bench/issues)**
 
@@ -22,7 +22,7 @@ AgentAssistBench is built for engineers and developers who:
 - Self-host their AI and care about **actual latency and infrastructure cost**, not just quality
 - Want their **own judgment** to decide what's "better" — not an automated scorer with its own biases
 
-If you're running two agent stacks and wondering which one to commit to, this tool gives you the answer in 30 days with your own data.
+If you're running two agent stacks and wondering which one to commit to, this tool gives you a data-driven answer — in as few as 7 days with `aab report --days 7`, or over 30–90 days for more statistical confidence.
 
 ---
 
@@ -41,7 +41,7 @@ You're choosing an AI agent framework for daily work — but every published ben
 
 ## The Solution
 
-AgentAssistBench is a self-hosted CLI that runs your actual daily tasks against any number of OpenAI-compatible agents side-by-side, then lets you rate the responses yourself. After 30 days you get per-category win rates, latency comparisons, and cost-per-request — a data-driven answer to "which agent stack should *I* use for *my* work?"
+AgentAssistBench is a self-hosted CLI that runs your actual daily tasks against any number of OpenAI-compatible agents side-by-side, then lets you rate the responses yourself. After any period you choose (`--days 7`, `--days 30`, `--days 90`) you get per-category win rates, latency comparisons, and cost-per-request — a data-driven answer to "which agent stack should *I* use for *my* work?"
 
 See [docs/sample-report.md](docs/sample-report.md) for a realistic example of what `aab report` produces.
 
@@ -57,7 +57,7 @@ See [docs/sample-report.md](docs/sample-report.md) for a realistic example of wh
 | Langfuse / LangSmith | Observability and evals for an app *you're building* | For apps you ship, not agent stacks you're choosing between |
 | "Just try both for a week" | Informal personal testing | Recency bias, no per-category breakdown, no cost data, not reproducible |
 
-AgentAssistBench is the gap: **framework-level, your real tasks, human judgment, 30-day longitudinal, with latency and cost in the same report.**
+AgentAssistBench is the gap: **framework-level, your real tasks, human judgment, configurable time window (`--days N`), with latency and cost in the same report.**
 
 ```mermaid
 graph TD
@@ -250,7 +250,7 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    Run["aab run<br/>(30 days)"]
+    Run["aab run<br/>(daily tasks)"]
     Status["aab status<br/>(check progress)"]
     Evaluate["aab evaluate<br/>(rate responses)"]
     Report["aab report<br/>(view results)"]
@@ -335,7 +335,7 @@ The bot runs the prompt through all configured agents sequentially and replies w
 | [CLI.md](CLI.md) | Command reference (`aab run`, `aab evaluate`, `aab report`, `aab telegram`) |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | How to deploy agents locally, on VMs, or in cloud (ACA, Cloud Run) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design and component interactions |
-| [docs/sample-report.md](docs/sample-report.md) | Realistic example of a 30-day `aab report` output |
+| [docs/sample-report.md](docs/sample-report.md) | Realistic example `aab report` output (94 benchmarks) |
 | [docs/](docs/) | 16 technical docs: project overview, ADRs, RFCs, roadmap |
 
 ---
@@ -426,7 +426,7 @@ Open-source project published under [github.com/theprodsde/agent-assist-bench](h
 
 1. **Try it locally** — [Quick Start](#quick-start-5-minutes) above
 2. **Set up the Telegram bot** — [Telegram Bot](#telegram-bot) above
-3. **Run 30 days of benchmarks** — Tag your real tasks with categories
+3. **Run benchmarks daily** — Tag your real tasks with categories; use `aab report --days 7` for a quick read or `--days 30` for stronger signal
 4. **Rate responses** — `aab evaluate` after accumulating results
 5. **Get recommendations** — `aab report` shows per-category win rates
 6. **Deploy at scale** — [DEPLOYMENT.md](DEPLOYMENT.md) for VMs or cloud
@@ -437,7 +437,7 @@ Open-source project published under [github.com/theprodsde/agent-assist-bench](h
 
 | | |
 |--|--|
-| 💬 **Questions / ideas** | [GitHub Discussions](https://github.com/theprodsde/agent-assist-bench/discussions) — ask anything, share your 30-day results, propose new frameworks |
+| 💬 **Questions / ideas** | [GitHub Discussions](https://github.com/theprodsde/agent-assist-bench/discussions) — ask anything, share your benchmark results, propose new frameworks |
 | 🐛 **Bug reports** | [Open an issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — use the bug report template |
 | 🤖 **Add an agent** | [New agent issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — or just use `BENCH_AGENTS_JSON` for zero-code setup |
 | ✨ **Feature requests** | [Open an issue](https://github.com/theprodsde/agent-assist-bench/issues/new/choose) — use the feature request template |

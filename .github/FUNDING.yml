@@ -1,12 +1,4 @@
-# These are supported funding model platforms
-
-github: []
-patreon: []
-open_collective: []
-ko_fi: []
-tidelift: []
-community_bridge: []
-liberapay: []
-issuehunt: []
-polar: []
-custom: ["https://paypal.me/karangehlod"]
+buy_me_a_coffee: theprodsde
+patreon: ""
+custom:
+  - https://paypal.me/karangehlod

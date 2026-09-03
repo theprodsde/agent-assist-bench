@@ -33,7 +33,8 @@ class BenchmarkFilters:
     """Filtering parameters for list_benchmarks queries.
 
     Supports filtering by status, date range (created_at), and source.
-    Pagination uses limit/offset with a default limit of 50 and max of 200.
+    Pagination uses limit/offset with a default limit of 50.
+    Pass limit=0 to fetch all matching rows (no cap).
     """
 
     status: BenchmarkStatus | None = None
@@ -44,11 +45,9 @@ class BenchmarkFilters:
     offset: int = 0
 
     def __post_init__(self) -> None:
-        """Clamp limit to [1, 200]."""
-        if self.limit < 1:
-            self.limit = 1
-        elif self.limit > 200:
-            self.limit = 200
+        """Clamp limit to a minimum of 0 (0 = unlimited)."""
+        if self.limit < 0:
+            self.limit = 0
 
 
 class StorageManager:
@@ -293,8 +292,10 @@ class StorageManager:
             query += " AND created_at <= ?"
             params.append(filters.date_to)
 
+        # limit=0 means "fetch all rows"; SQLite uses -1 for unlimited LIMIT.
+        sql_limit = -1 if filters.limit == 0 else filters.limit
         query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
-        params.append(filters.limit)
+        params.append(sql_limit)
         params.append(filters.offset)
 
         cursor = await conn.execute(query, params)

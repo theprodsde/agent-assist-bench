@@ -51,7 +51,7 @@ class ReportGenerator:
         total_evaluated = 0
 
         benchmarks = await self._storage.list_benchmarks(
-            BenchmarkFilters(date_from=start_date, date_to=f"{end_date}T23:59:59", limit=200)
+            BenchmarkFilters(date_from=start_date, date_to=f"{end_date}T23:59:59", limit=0)
         )
 
         for benchmark in benchmarks:

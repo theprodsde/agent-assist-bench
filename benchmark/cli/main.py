@@ -98,7 +98,9 @@ def evaluate() -> None:
 
 @app.command()
 def report(
-    days: int = typer.Option(7, "--days", "-d", help="Number of days to include in the report."),
+    days: int = typer.Option(
+        7, "--days", "-d", help="Number of days to include (e.g. --days 7, --days 30, --days 90)."
+    ),
 ) -> None:
     """Generate a Markdown comparison report."""
     from benchmark.cli.commands.report import report_command
