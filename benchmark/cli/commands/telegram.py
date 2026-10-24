@@ -42,7 +42,9 @@ async def _run_bot(token: str, allowed_chat_ids: frozenset[str]) -> None:
         if allowed_chat_ids:
             typer.echo(f"Access restricted to chat IDs: {', '.join(sorted(allowed_chat_ids))}")
         else:
-            typer.echo("Warning: no BENCH_TELEGRAM_ALLOWED_CHAT_IDS set — accepting all chats.")
+            typer.echo(
+                "Warning: BENCH_TELEGRAM_ALLOW_ALL_CHATS is enabled — accepting all chats."
+            )
         typer.echo("Press Ctrl-C to stop.\n")
         await run_polling(
             token=token,
@@ -54,7 +56,7 @@ async def _run_bot(token: str, allowed_chat_ids: frozenset[str]) -> None:
         await ctx.storage.close()
 
 
-def telegram_command(token: str, allowed_chat_ids_str: str) -> None:
+def telegram_command(token: str, allowed_chat_ids_str: str, allow_all_chats: bool = False) -> None:
     """Start the Telegram polling bot."""
     if not token:
         typer.echo(
@@ -67,6 +69,18 @@ def telegram_command(token: str, allowed_chat_ids_str: str) -> None:
         raise typer.Exit(code=1)
 
     allowed = frozenset(x.strip() for x in allowed_chat_ids_str.split(",") if x.strip())
+
+    if not allowed and not allow_all_chats:
+        typer.echo(
+            "Error: BENCH_TELEGRAM_ALLOWED_CHAT_IDS is not set.\n"
+            "An unrestricted bot lets anyone who finds it run benchmarks on\n"
+            "your API quota. To fix:\n"
+            "  1. Message @userinfobot in Telegram to get your numeric chat ID\n"
+            "  2. Add BENCH_TELEGRAM_ALLOWED_CHAT_IDS=<your-id> to your .env\n"
+            "To intentionally run a public bot, set BENCH_TELEGRAM_ALLOW_ALL_CHATS=true.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
     try:
         asyncio.run(_run_bot(token, allowed))

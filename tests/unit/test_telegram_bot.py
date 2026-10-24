@@ -169,49 +169,71 @@ class TestTelegramBotApi:
         assert sent[0]["message_thread_id"] == 42
         await api.close()
 
-    async def test_download_file_always_none(self):
-        api = TelegramBotApi.__new__(TelegramBotApi)
-        result = await api.download_file("file-123")
-        assert result is None
-
-    async def test_resolve_file_url_success(self):
+    async def test_download_file_success(self):
         def handler(request: httpx.Request) -> httpx.Response:
-            return httpx.Response(
-                200, json={"ok": True, "result": {"file_path": "photos/file.jpg"}}
-            )
+            if "getFile" in str(request.url):
+                return httpx.Response(
+                    200,
+                    json={"ok": True, "result": {"file_path": "photos/file.jpg", "file_size": 4}},
+                )
+            return httpx.Response(200, content=b"data")
 
         api = _make_api(handler)
-        url = await api.resolve_file_url("file-abc")
-        assert url is not None
-        assert "photos/file.jpg" in url
+        result = await api.download_file("file-123")
+        assert result == b"data"
         await api.close()
 
-    async def test_resolve_file_url_missing_path(self):
+    async def test_download_file_missing_path(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json={"ok": True, "result": {}})
 
         api = _make_api(handler)
-        url = await api.resolve_file_url("file-abc")
-        assert url is None
+        result = await api.download_file("file-123")
+        assert result is None
         await api.close()
 
-    async def test_resolve_file_url_http_error(self):
+    async def test_download_file_too_large_metadata(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "ok": True,
+                    "result": {
+                        "file_path": "video/big.mp4",
+                        "file_size": TelegramBotApi.MAX_FILE_BYTES + 1,
+                    },
+                },
+            )
+
+        api = _make_api(handler)
+        result = await api.download_file("file-123")
+        assert result is None
+        await api.close()
+
+    async def test_download_file_http_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(404, text="not found")
 
         api = _make_api(handler)
-        url = await api.resolve_file_url("file-abc")
-        assert url is None
+        result = await api.download_file("file-123")
+        assert result is None
         await api.close()
 
-    async def test_resolve_file_url_network_error(self):
+    async def test_download_file_network_error(self):
         def handler(request: httpx.Request) -> httpx.Response:
             raise httpx.ConnectError("refused")
 
         api = _make_api(handler)
+        result = await api.download_file("file-123")
+        assert result is None
+        await api.close()
+
+    async def test_resolve_file_url_never_exposes_tokenized_url(self):
+        # Telegram file URLs embed the bot token; resolving must always
+        # return None so the URL is never persisted or sent to agents.
+        api = TelegramBotApi.__new__(TelegramBotApi)
         url = await api.resolve_file_url("file-abc")
         assert url is None
-        await api.close()
 
     async def test_close(self):
         api = TelegramBotApi(token="123:ABC")

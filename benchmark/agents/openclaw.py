@@ -51,6 +51,8 @@ class OpenClawAdapter:
         version: str = _OPENCLAW_VERSION,
         timeout: float = 120.0,
         client: httpx.AsyncClient | None = None,
+        input_price_per_mtok: float | None = None,
+        output_price_per_mtok: float | None = None,
     ) -> None:
         self._inner = OpenAICompatibleAdapter(
             endpoint=endpoint,
@@ -62,6 +64,8 @@ class OpenClawAdapter:
             timeout=timeout,
             client=client,
             supported_modalities=set(_OPENCLAW_SUPPORTED_MODALITIES),
+            input_price_per_mtok=input_price_per_mtok,
+            output_price_per_mtok=output_price_per_mtok,
         )
         self._log = logger.bind(agent_name="openclaw")
 

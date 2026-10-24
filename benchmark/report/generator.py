@@ -80,10 +80,15 @@ class ReportGenerator:
                     # A failed execution is never a human-preferred successful
                     # result, but its metrics remain in the same aggregates as
                     # before so existing cost/latency behavior is unchanged.
+                    # preferred_deployment is optional (the CLI only collects
+                    # the agent name); when absent, the agent name alone wins.
                     if (
                         ex.success
                         and evaluation.preferred_agent == ex.agent_name
-                        and evaluation.preferred_deployment == ex.deployment.deployment_type
+                        and (
+                            evaluation.preferred_deployment is None
+                            or evaluation.preferred_deployment == ex.deployment.deployment_type
+                        )
                     ):
                         stats.wins += 1
                     if ex.llm and ex.llm.estimated_cost_usd is not None:
@@ -142,9 +147,10 @@ class ReportGenerator:
             for pair_key in sorted(pairs.keys()):
                 s = pairs[pair_key]
                 wr = round((s.wins / s.total * 100) if s.total > 0 else 0.0, 2)
-                ac = round((s.cost_sum / s.cost_count) if s.cost_count > 0 else 0.0, 2)
+                # Per-request LLM cost is typically sub-cent; 6dp keeps it visible.
+                ac = f"${s.cost_sum / s.cost_count:.6f}/req" if s.cost_count > 0 else "—"
                 al = round((s.latency_sum / s.latency_count) if s.latency_count > 0 else 0.0, 2)
-                lines.append(f"| {pair_key} | {wr}% | ${ac}/req | {al}ms | {s.failures} |")
+                lines.append(f"| {pair_key} | {wr}% | {ac} | {al}ms | {s.failures} |")
                 provider_str = ", ".join(sorted(s.providers)) if s.providers else "unknown"
                 if (
                     not low_sample
@@ -164,8 +170,8 @@ class ReportGenerator:
             s.infra_cost_count > 0 for pairs in categories.values() for s in pairs.values()
         )
         if has_cost_data:
-            lines.append("| Agent | Deployment | Provider | Avg Infra Cost/Exec |")
-            lines.append("|-------|------------|----------|---------------------|")
+            lines.append("| Agent | Category | Provider | Avg Infra Cost/Exec |")
+            lines.append("|-------|----------|----------|---------------------|")
             for category in sorted(categories.keys()):
                 pairs = categories[category]
                 for pair_key in sorted(pairs.keys()):

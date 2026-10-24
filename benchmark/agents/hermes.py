@@ -44,6 +44,8 @@ class HermesAdapter:
         model: str = _HERMES_DEFAULT_MODEL,
         timeout: float = 120.0,
         client: httpx.AsyncClient | None = None,
+        input_price_per_mtok: float | None = None,
+        output_price_per_mtok: float | None = None,
     ) -> None:
         self._log = logger.bind(agent_name="hermes")
         self._inner = OpenAICompatibleAdapter(
@@ -55,6 +57,8 @@ class HermesAdapter:
             signing_key=signing_key,
             timeout=timeout,
             client=client,
+            input_price_per_mtok=input_price_per_mtok,
+            output_price_per_mtok=output_price_per_mtok,
         )
         self._log.debug("hermes_adapter_initialized", endpoint=endpoint, model=model)
 

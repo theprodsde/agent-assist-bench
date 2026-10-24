@@ -40,6 +40,8 @@ class OpenAICompatibleAdapter:
         timeout: float = 120.0,
         client: httpx.AsyncClient | None = None,
         supported_modalities: set[InputType] | None = None,
+        input_price_per_mtok: float | None = None,
+        output_price_per_mtok: float | None = None,
     ) -> None:
         self._endpoint = endpoint.rstrip("/")
         self._model = model
@@ -48,6 +50,8 @@ class OpenAICompatibleAdapter:
         self._api_key = api_key
         self._signing_key = signing_key
         self._timeout = timeout
+        self._input_price_per_mtok = input_price_per_mtok
+        self._output_price_per_mtok = output_price_per_mtok
         self._supported_modalities = (
             set(supported_modalities)
             if supported_modalities is not None
@@ -307,12 +311,20 @@ class OpenAICompatibleAdapter:
         return headers
 
     def _extract_metrics(self, data: dict[str, Any]) -> LLMMetrics | None:
-        """Extract model, token, and cost metrics from an OpenAI response."""
+        """Extract model, token, and cost metrics from an OpenAI response.
+
+        Standard OpenAI-compatible endpoints never report cost, so when no
+        cost field is present we fall back to the configured per-million-token
+        prices (input_price_per_mtok / output_price_per_mtok) applied to the
+        reported usage counts.
+        """
         usage = data.get("usage") or {}
         model = data.get("model") or self._model
         cost = usage.get("estimated_cost_usd", usage.get("cost"))
         if cost is None:
             cost = data.get("estimated_cost_usd", data.get("cost_usd", data.get("cost")))
+        if cost is None:
+            cost = self._cost_from_prices(usage)
 
         if not usage and not model and cost is None:
             return None
@@ -324,3 +336,22 @@ class OpenAICompatibleAdapter:
             total_tokens=usage.get("total_tokens"),
             estimated_cost_usd=cost,
         )
+
+    def _cost_from_prices(self, usage: dict[str, Any]) -> float | None:
+        """Estimate cost from configured per-million-token prices, if any."""
+        if self._input_price_per_mtok is None and self._output_price_per_mtok is None:
+            return None
+        prompt_tokens = usage.get("prompt_tokens")
+        completion_tokens = usage.get("completion_tokens")
+        if not isinstance(prompt_tokens, int | float):
+            prompt_tokens = None
+        if not isinstance(completion_tokens, int | float):
+            completion_tokens = None
+        if prompt_tokens is None and completion_tokens is None:
+            return None
+        cost = 0.0
+        if prompt_tokens is not None and self._input_price_per_mtok is not None:
+            cost += prompt_tokens / 1_000_000 * self._input_price_per_mtok
+        if completion_tokens is not None and self._output_price_per_mtok is not None:
+            cost += completion_tokens / 1_000_000 * self._output_price_per_mtok
+        return cost

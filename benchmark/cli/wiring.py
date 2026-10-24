@@ -91,6 +91,8 @@ def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_Age
                     endpoint=settings.hermes_endpoint,
                     api_key=hermes_key,
                     signing_key=signing_key,
+                    input_price_per_mtok=settings.hermes_input_price_per_mtok,
+                    output_price_per_mtok=settings.hermes_output_price_per_mtok,
                 ),
                 cpu_cores=settings.hermes_cpu_cores,
                 memory_mb=settings.hermes_memory_mb,
@@ -110,6 +112,8 @@ def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_Age
                     endpoint=settings.openclaw_endpoint,
                     api_key=openclaw_key,
                     signing_key=signing_key,
+                    input_price_per_mtok=settings.openclaw_input_price_per_mtok,
+                    output_price_per_mtok=settings.openclaw_output_price_per_mtok,
                 ),
                 cpu_cores=settings.openclaw_cpu_cores,
                 memory_mb=settings.openclaw_memory_mb,
@@ -134,6 +138,8 @@ def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_Age
                     agent_version="1.0.0",
                     api_key=nvidia_key,
                     signing_key=signing_key,
+                    input_price_per_mtok=settings.nvidia_input_price_per_mtok,
+                    output_price_per_mtok=settings.nvidia_output_price_per_mtok,
                 ),
             )
         )
@@ -149,6 +155,8 @@ def _build_agent_specs(settings: Settings, signing_key: str | None) -> list[_Age
                     agent_version="1.0.0",
                     api_key=nvidia_key,
                     signing_key=signing_key,
+                    input_price_per_mtok=settings.nvidia_input_price_per_mtok,
+                    output_price_per_mtok=settings.nvidia_output_price_per_mtok,
                 ),
             )
         )
@@ -164,7 +172,8 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
 
     Each JSON item must have: name (str), endpoint (str), model (str).
     Optional: api_key (str), deployment_type (str), cpu_cores (float),
-    memory_mb (float), cost_per_hour (float).
+    memory_mb (float), cost_per_hour (float), input_price_per_mtok (float),
+    output_price_per_mtok (float).
 
     Entries with a duplicate name+deployment_type pair override earlier ones
     (same as AgentRegistry.register semantics).
@@ -202,8 +211,17 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
         api_key: str | None = item.get("api_key") or None
         deployment_type = _resolve_deployment_type(item.get("deployment_type", "local_docker"))
 
+        input_price: float | None = item.get("input_price_per_mtok")
+        output_price: float | None = item.get("output_price_per_mtok")
+
         def _make_factory(
-            n: str, e: str, m: str, k: str | None, sk: str | None
+            n: str,
+            e: str,
+            m: str,
+            k: str | None,
+            sk: str | None,
+            in_price: float | None,
+            out_price: float | None,
         ) -> Callable[[], AgentAdapter]:
             def _factory() -> AgentAdapter:
                 return OpenAICompatibleAdapter(
@@ -213,6 +231,8 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
                     agent_version="1.0.0",
                     api_key=k,
                     signing_key=sk,
+                    input_price_per_mtok=in_price,
+                    output_price_per_mtok=out_price,
                 )
 
             return _factory
@@ -222,7 +242,9 @@ def _build_json_agent_specs(settings: Settings, signing_key: str | None) -> list
                 name=name,
                 endpoint=endpoint,
                 deployment_type=deployment_type,
-                factory=_make_factory(name, endpoint, model, api_key, signing_key),
+                factory=_make_factory(
+                    name, endpoint, model, api_key, signing_key, input_price, output_price
+                ),
                 cpu_cores=item.get("cpu_cores"),
                 memory_mb=item.get("memory_mb"),
                 cost_per_hour=item.get("cost_per_hour"),

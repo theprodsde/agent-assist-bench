@@ -374,6 +374,66 @@ class TestExecute:
         assert response.llm_metrics.prompt_tokens is None
 
     @pytest.mark.asyncio
+    async def test_cost_computed_from_configured_prices(self) -> None:
+        """When the endpoint reports no cost, configured $/1M-token prices apply."""
+        transport = _mock_transport(
+            json_body=_make_openai_response(prompt_tokens=1000, completion_tokens=500)
+        )
+        client = httpx.AsyncClient(transport=transport)
+
+        adapter = OpenAICompatibleAdapter(
+            endpoint="http://localhost:8080",
+            model="gpt-4",
+            client=client,
+            input_price_per_mtok=2.0,
+            output_price_per_mtok=8.0,
+        )
+
+        response = await adapter.execute(AgentRequest(prompt="Hello"))
+
+        assert response.llm_metrics is not None
+        # 1000/1M * $2 + 500/1M * $8 = 0.002 + 0.004
+        assert response.llm_metrics.estimated_cost_usd == pytest.approx(0.006)
+
+    @pytest.mark.asyncio
+    async def test_endpoint_reported_cost_takes_precedence_over_prices(self) -> None:
+        """A cost field reported by the endpoint wins over configured prices."""
+        body = _make_openai_response(prompt_tokens=1000, completion_tokens=500)
+        body["usage"]["estimated_cost_usd"] = 0.5
+        transport = _mock_transport(json_body=body)
+        client = httpx.AsyncClient(transport=transport)
+
+        adapter = OpenAICompatibleAdapter(
+            endpoint="http://localhost:8080",
+            model="gpt-4",
+            client=client,
+            input_price_per_mtok=2.0,
+            output_price_per_mtok=8.0,
+        )
+
+        response = await adapter.execute(AgentRequest(prompt="Hello"))
+
+        assert response.llm_metrics is not None
+        assert response.llm_metrics.estimated_cost_usd == 0.5
+
+    @pytest.mark.asyncio
+    async def test_no_prices_and_no_reported_cost_leaves_cost_none(self) -> None:
+        """Without prices or an endpoint-reported cost, cost stays None."""
+        transport = _mock_transport(json_body=_make_openai_response())
+        client = httpx.AsyncClient(transport=transport)
+
+        adapter = OpenAICompatibleAdapter(
+            endpoint="http://localhost:8080",
+            model="gpt-4",
+            client=client,
+        )
+
+        response = await adapter.execute(AgentRequest(prompt="Hello"))
+
+        assert response.llm_metrics is not None
+        assert response.llm_metrics.estimated_cost_usd is None
+
+    @pytest.mark.asyncio
     async def test_api_key_sent_in_header(self) -> None:
         """Authorization header is set when API key is provided."""
         captured_headers: dict = {}

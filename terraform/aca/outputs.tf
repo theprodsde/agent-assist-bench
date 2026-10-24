@@ -25,6 +25,11 @@ output "resource_group" {
   value       = azurerm_resource_group.rg.name
 }
 
+output "identity_principal_id" {
+  description = "Principal ID of the app's managed identity — grant it access to any additional Key Vaults or registries manually if needed"
+  value       = azurerm_user_assigned_identity.app.principal_id
+}
+
 output "deployment_metadata" {
   description = "Metadata recorded with each benchmark execution"
   value = {
@@ -36,9 +41,9 @@ output "deployment_metadata" {
     agent_name      = var.agent_name
     container_image = var.container_image
     scaling = {
-      min_replicas          = var.min_replicas
-      max_replicas          = var.max_replicas
-      concurrent_requests   = var.scale_concurrent_requests
+      min_replicas        = var.min_replicas
+      max_replicas        = var.max_replicas
+      concurrent_requests = var.scale_concurrent_requests
     }
   }
 }

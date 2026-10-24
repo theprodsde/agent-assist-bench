@@ -10,16 +10,31 @@ services:
   hermes:
     build:
       context: ./hermes
+      # Explicit dockerfile — otherwise the base file's
+      # docker/hermes/Dockerfile.source path is inherited and resolved
+      # against this context, which does not exist.
+      dockerfile: Dockerfile
     restart: unless-stopped
-    command: ["sh", "-lc", "hermes --host 0.0.0.0 --port 8642"]
+    # The gateway hosts the OpenAI-compatible api_server adapter (port 8642,
+    # enabled via API_SERVER_ENABLED/API_SERVER_KEY). It is auto-started by
+    # the boot reconciler via HERMES_GATEWAY_BOOTSTRAP_STATE=running (see
+    # environment below); the CMD only needs to keep the container alive.
+    # The image default CMD boots the interactive TUI, which exits when
+    # stdin is not a terminal.
+    command: ["sleep", "infinity"]
     ports:
       - "8001:8642"
-    volumes:
+    # Replace the base mounts entirely: hermes does NOT expand ${VAR}
+    # placeholders in config.yaml, and a read-only config mount breaks the
+    # image's config migrator. Put real values in ./hermes/data/config.yaml.
+    volumes: !override
       - ./hermes/data:/opt/data
-      - ./hermes/config.yaml:/opt/data/config.yaml:ro
     env_file:
       - ./hermes/.env
     environment:
+      # Seed gateway_state.json on first boot so the supervised gateway
+      # (which hosts the api_server) starts automatically.
+      HERMES_GATEWAY_BOOTSTRAP_STATE: running
       API_SERVER_ENABLED: "true"
       API_SERVER_HOST: 0.0.0.0
       API_SERVER_PORT: "8642"
@@ -36,10 +51,19 @@ services:
 
   openclaw:
     image: ghcr.io/openclaw/openclaw:latest
+    # Drop the base file's source build so the published image is used.
+    build: !reset null
     restart: unless-stopped
-    command: ["sh", "-lc", "openclaw onboard --non-interactive --accept-risk && openclaw serve --host 0.0.0.0 --port 8002"]
+    # `openclaw serve` does not exist. The gateway serves the OpenAI-compatible
+    # POST /v1/chat/completions when gateway.http.endpoints.chatCompletions.enabled
+    # is true — all of that (bind, port, auth token, model provider) is set in
+    # ./openclaw/data/openclaw.json mounted below.
+    command: ["sh", "-lc", "openclaw gateway run"]
     ports:
       - "8002:8002"
+    # Replace the base mounts: the state dir carries openclaw.json.
+    volumes: !override
+      - ./openclaw/data:/home/node/.openclaw
     env_file:
       - ./openclaw/.env
     environment:

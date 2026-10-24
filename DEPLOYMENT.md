@@ -50,7 +50,12 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 
 ---
 
-## Virtual Machine (Production)
+## Virtual Machine
+
+> ⚠️ **Not recommended.** The `terraform/vm` config is a reference template: its cloud-init
+> runs `docker run <image>` without any registry login or pull source, and the NSG opens
+> SSH and the agent port to the internet. Prefer the [Managed Container](#managed-container-recommended-for-production)
+> path below, which is validated and cheaper (scale-to-zero).
 
 Deploy agents to a VM (e.g., Azure VM, AWS EC2) with Terraform.
 
@@ -98,52 +103,62 @@ aab run "Your test prompt"
 
 ## Managed Container (Recommended for Production)
 
-Deploy to Azure Container Apps or Google Cloud Run for auto-scaling and HTTPS.
+Deploy to Azure Container Apps (ACA) with the Terraform module in `terraform/aca`.
+You get HTTPS ingress, health probes, HTTP autoscaling, managed-identity image
+pulls (no registry passwords), and optional scale-to-zero so idle agents cost
+almost nothing.
 
 ### Prerequisites
 
-- Azure CLI or gcloud CLI
-- Container registry (ACR, GCR)
-- NVIDIA API key
+- Terraform >= 1.5 and Azure CLI (`az login`)
+- An Azure Container Registry (see `terraform/acr`, or `az acr create`)
+- NVIDIA API key (or your own model backend)
 
 ### 1. Build and push images
 
 ```bash
-docker build -t <registry>/hermes:latest -f docker/hermes/Dockerfile .
-docker build -t <registry>/openclaw:latest -f docker/openclaw/Dockerfile .
+az acr login --name <registry>
 
-docker push <registry>/hermes:latest
-docker push <registry>/openclaw:latest
+docker build -t <registry>.azurecr.io/hermes:latest -f docker/hermes/Dockerfile .
+docker build -t <registry>.azurecr.io/openclaw:latest -f docker/openclaw/Dockerfile .
+
+docker push <registry>.azurecr.io/hermes:latest
+docker push <registry>.azurecr.io/openclaw:latest
 ```
 
-### 2. Deploy to ACA (Azure)
+### 2. Configure and deploy each agent
+
+Each agent is an independent Terraform stack (separate resource group and
+state). Fill in the example vars — including `acr_id` so the app's managed
+identity can pull your image, and either a literal `api_key` or a Key Vault
+reference (`api_key_key_vault_secret_id` + `key_vault_id`):
 
 ```bash
-az containerapp create \
-  --name hermes \
-  --image <registry>/hermes:latest \
-  --environment <env_name> \
-  --ingress external \
-  --target-port 8642 \
-  --env-vars-file docker/hermes/.env
+cd terraform/aca
+cp hermes.tfvars.example hermes.tfvars     # edit values
+terraform init
+terraform apply -var-file=hermes.tfvars
+
+cp openclaw.tfvars.example openclaw.tfvars # edit values
+terraform apply -var-file=openclaw.tfvars -state=openclaw.tfstate
 ```
 
-### 3. Get public endpoints
+Set `min_replicas = 0` (the default) for scale-to-zero — cheapest, but the
+first request after idle pays a cold start. Use `min_replicas = 1` if you
+want consistent latency numbers in your benchmarks.
+
+### 3. Point benchmark at ACA
 
 ```bash
-az containerapp show -n hermes --query properties.configuration.ingress.fqdn
+export BENCH_HERMES_ENDPOINT=$(terraform output -raw endpoint_url)/v1
+export BENCH_HERMES_DEPLOYMENT_TYPE=managed_container
+# repeat for openclaw with -state=openclaw.tfstate
 ```
 
-### 4. Point benchmark at ACA
-
-```env
-BENCH_HERMES_ENDPOINT=https://hermes.<domain>.azurecontainerapps.io/v1
-BENCH_OPENCLAW_ENDPOINT=https://openclaw.<domain>.azurecontainerapps.io/v1
-```
-
-### 5. Run benchmarks
+### 4. Verify and run
 
 ```bash
+curl -i "$(terraform output -raw health_check_url)"
 aab run "Your test prompt"
 ```
 

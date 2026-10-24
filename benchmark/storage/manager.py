@@ -6,6 +6,7 @@ configuration using aiosqlite for async access.
 
 from __future__ import annotations
 
+import importlib.resources
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -95,13 +96,14 @@ class StorageManager:
         # Enable foreign key enforcement
         await self._connection.execute("PRAGMA foreign_keys=ON")
 
-        # Read schema file
-        schema_path = Path(__file__).parent.parent.parent / "storage" / "schema.sql"
+        # Read the schema shipped inside the benchmark.storage package so it
+        # is available for both editable checkouts and wheel installs.
+        schema_resource = importlib.resources.files("benchmark.storage").joinpath("schema.sql")
         try:
-            schema_sql = schema_path.read_text(encoding="utf-8")
+            schema_sql = schema_resource.read_text(encoding="utf-8")
         except OSError as exc:
             await self.close()
-            raise RuntimeError(f"Failed to read schema file from {schema_path}: {exc}") from exc
+            raise RuntimeError(f"Failed to read schema file from {schema_resource}: {exc}") from exc
 
         # Execute schema using executescript (handles implicit commits between
         # statements so that CREATE INDEX can reference just-created tables).

@@ -34,9 +34,9 @@ variable "memory" {
 }
 
 variable "min_replicas" {
-  description = "Minimum replicas (1 = always-on, avoids cold-start)"
+  description = "Minimum replicas. 0 = scale to zero when idle (cheapest, adds cold-start latency to the first request); 1 = always-on."
   type        = number
-  default     = 1
+  default     = 0
 }
 
 variable "max_replicas" {
@@ -51,10 +51,48 @@ variable "scale_concurrent_requests" {
   default     = "10"
 }
 
-variable "api_key_secret_ref" {
-  description = "API key value (use Key Vault reference in production)"
+variable "api_key" {
+  description = "Agent API key as a literal value, stored as an ACA secret. Leave empty when using api_key_key_vault_secret_id instead."
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "api_key_key_vault_secret_id" {
+  description = "Key Vault secret ID for the agent API key (e.g. https://myvault.vault.azure.net/secrets/hermes-api-key). Resolved at runtime via the app's managed identity. Leave empty when using api_key."
+  type        = string
+  default     = ""
+}
+
+variable "key_vault_id" {
+  description = "Resource ID of the Key Vault holding api_key_key_vault_secret_id. When set, the app's managed identity is granted 'Key Vault Secrets User' (requires RBAC-mode vault). Leave empty to manage access yourself."
+  type        = string
+  default     = ""
+}
+
+variable "api_key_env_var_name" {
+  description = "Env var name the container expects the API key in (OpenClaw: AGENT_API_KEY, Hermes: API_SERVER_KEY)"
+  type        = string
+  default     = "AGENT_API_KEY"
+}
+
+variable "acr_id" {
+  description = "Resource ID of the Azure Container Registry hosting container_image. When set, the app's managed identity is granted AcrPull and used for image pulls. Leave empty for public images."
+  type        = string
+  default     = ""
+}
+
+variable "env_vars" {
+  description = "Plain (non-secret) environment variables for the container, e.g. MODEL_NAME and MODEL_BASE_URL"
+  type        = map(string)
+  default     = {}
+}
+
+variable "secret_env_vars" {
+  description = "Secret environment variables (e.g. MODEL_API_KEY). Each value is stored as an ACA secret and injected by name."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
 }
 
 variable "health_check_path" {

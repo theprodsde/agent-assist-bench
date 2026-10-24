@@ -125,6 +125,7 @@ def telegram() -> None:
     telegram_command(
         settings.telegram_bot_token.get_secret_value(),
         settings.telegram_allowed_chat_ids,
+        allow_all_chats=settings.telegram_allow_all_chats,
     )
 
 

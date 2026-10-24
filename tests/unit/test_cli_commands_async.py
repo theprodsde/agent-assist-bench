@@ -360,7 +360,7 @@ class TestTelegramCommand:
             patch("benchmark.cli.commands.telegram._run_bot", side_effect=_raise),
             pytest.raises(typer.Exit) as exc_info,
         ):
-            telegram_command("valid:TOKEN", "")
+            telegram_command("valid:TOKEN", "111")
         assert exc_info.value.exit_code == 1
 
     def test_keyboard_interrupt_exits_cleanly(self):
@@ -368,7 +368,19 @@ class TestTelegramCommand:
             raise KeyboardInterrupt
 
         with patch("benchmark.cli.commands.telegram._run_bot", side_effect=_interrupt):
-            telegram_command("valid:TOKEN", "")  # should not raise
+            telegram_command("valid:TOKEN", "111")  # should not raise
+
+    def test_no_allowed_chat_ids_refuses_to_start(self):
+        with pytest.raises(typer.Exit) as exc_info:
+            telegram_command("valid:TOKEN", "")
+        assert exc_info.value.exit_code == 1
+
+    def test_allow_all_chats_opt_in_starts(self):
+        async def _interrupt(_token, _ids):
+            raise KeyboardInterrupt
+
+        with patch("benchmark.cli.commands.telegram._run_bot", side_effect=_interrupt):
+            telegram_command("valid:TOKEN", "", allow_all_chats=True)  # should not raise
 
 
 # ---------------------------------------------------------------------------

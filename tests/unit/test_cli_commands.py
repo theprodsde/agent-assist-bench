@@ -108,6 +108,8 @@ class TestTelegramCommand:
         s = MagicMock()
         s.telegram_bot_token.get_secret_value.return_value = token
         s.telegram_allowed_chat_ids = allowed_ids
+        # Opt in so tests exercising the polling path start without chat IDs.
+        s.telegram_allow_all_chats = True
         s.db_path = str(tmp_path / "tg.db") if tmp_path else ":memory:"
         s.hermes_api_key.get_secret_value.return_value = ""
         s.openclaw_api_key.get_secret_value.return_value = ""

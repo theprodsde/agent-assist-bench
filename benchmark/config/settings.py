@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     openclaw_memory_mb: float | None = None
     openclaw_cost_per_hour: float | None = None
 
+    # LLM token prices in USD per 1 million tokens (optional).
+    # Used to estimate per-request cost when the endpoint does not report one
+    # (standard OpenAI-compatible endpoints never do). Example: 0.60 = $0.60/1M.
+    hermes_input_price_per_mtok: float | None = None
+    hermes_output_price_per_mtok: float | None = None
+    openclaw_input_price_per_mtok: float | None = None
+    openclaw_output_price_per_mtok: float | None = None
+    nvidia_input_price_per_mtok: float | None = None
+    nvidia_output_price_per_mtok: float | None = None
+
     # Agent API keys (secrets — never persisted in DB or exports)
     hermes_api_key: SecretStr = SecretStr("")
     openclaw_api_key: SecretStr = SecretStr("")
@@ -69,10 +79,14 @@ class Settings(BaseSettings):
     discord_bot_token: SecretStr = SecretStr("")
 
     # Comma-separated Telegram chat IDs allowed to trigger benchmarks.
-    # Empty string means no restriction (accept all chats).
-    # Find your chat ID by messaging @userinfobot in Telegram.
+    # Required to start the bot: anyone who can message an unrestricted bot
+    # can burn your API quota. Find your chat ID via @userinfobot in Telegram.
     # Example: BENCH_TELEGRAM_ALLOWED_CHAT_IDS=123456789,987654321
     telegram_allowed_chat_ids: str = ""
+
+    # Explicit opt-in to run the Telegram bot with no chat ID restriction
+    # (a deliberately public bot). Ignored when allowed chat IDs are set.
+    telegram_allow_all_chats: bool = False
 
     # Generic agents — define any number of OpenAI-compatible agents in JSON.
     # Each item must have: name, endpoint, model (str); optional: api_key, deployment_type,

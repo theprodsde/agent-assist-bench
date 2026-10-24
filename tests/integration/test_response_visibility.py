@@ -240,8 +240,8 @@ async def test_report_exposes_failures_and_preserves_metrics(tmp_path: Path) -> 
 
     assert "## Execution Errors" in report
     assert "unsupported_modality:image" in report
-    assert "| good-agent/local_docker | 100.0% | $0.12/req | 1234.5ms | 0 |" in report
-    assert "| modality-agent/vm | 0.0% | $0.99/req | 9876.5ms | 5 |" in report
+    assert "| good-agent/local_docker | 100.0% | $0.123000/req | 1234.5ms | 0 |" in report
+    assert "| modality-agent/vm | 0.0% | $0.987000/req | 9876.5ms | 5 |" in report
     recommendations = report.split("## Recommendations", 1)[1]
     assert "good-agent/local_docker" in recommendations
     assert "modality-agent/vm" not in recommendations

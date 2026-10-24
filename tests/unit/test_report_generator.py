@@ -168,19 +168,54 @@ class TestReportGenerator:
         # openclaw/vm wins 2 out of 6 = 33.33%
         assert "33.33%" in report
 
+    async def test_win_counted_without_preferred_deployment(self, storage):
+        """`aab evaluate` only records the preferred agent, never a deployment.
+
+        A win must still be counted when preferred_deployment is None —
+        otherwise the CLI workflow always reports 0% win rates.
+        """
+        await storage.save_benchmark(_make_benchmark("01HBENCHCLI0000000000000000", ["coding"]))
+        await storage.save_execution(
+            _make_execution(
+                "01HEXECCLI00000000000000001",
+                "01HBENCHCLI0000000000000000",
+                "hermes",
+                DeploymentType.LOCAL_DOCKER,
+            )
+        )
+        await storage.save_execution(
+            _make_execution(
+                "01HEXECCLI00000000000000002",
+                "01HBENCHCLI0000000000000000",
+                "openclaw",
+                DeploymentType.LOCAL_DOCKER,
+            )
+        )
+        await storage.save_evaluation(
+            _make_evaluation(
+                "01HEVALCLI00000000000000000",
+                "01HBENCHCLI0000000000000000",
+                preferred_agent="hermes",
+                preferred_deployment=None,
+            )
+        )
+
+        gen = ReportGenerator(storage)
+        report = await gen.generate("2024-06-01", "2024-06-30")
+
+        assert "| hermes/local_docker | 100.0% |" in report
+        assert "| openclaw/local_docker | 0.0% |" in report
+
     async def test_average_cost_calculation(self, storage):
-        """Average costs are correctly calculated."""
+        """Sub-cent average costs stay visible at 6 decimal places."""
         await _seed_data(storage)
         gen = ReportGenerator(storage)
 
         report = await gen.generate("2024-06-01", "2024-06-30")
 
-        # hermes cost is always $0.004
-        assert "$0.0/req" in report or "$0.004/req" in report
-        # Let's check exact: 0.004 average rounds to 0.0 at 2dp
-        # Actually 0.004 rounds to 0.0 at 2dp. Let me verify...
-        # round(0.004, 2) = 0.0 — that's correct
-        assert "$0.0/req" in report
+        # hermes cost is always $0.004, openclaw always $0.008
+        assert "$0.004000/req" in report
+        assert "$0.008000/req" in report
 
     async def test_average_latency_calculation(self, storage):
         """Average latencies are correctly calculated."""

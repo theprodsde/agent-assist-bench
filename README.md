@@ -294,7 +294,7 @@ BENCH_TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNO...
 BENCH_TELEGRAM_ALLOWED_CHAT_IDS=123456789
 ```
 
-`BENCH_TELEGRAM_ALLOWED_CHAT_IDS` restricts the bot to your chat only. Anyone else who messages the bot is silently ignored. Leave it empty only if you intentionally want a public bot.
+`BENCH_TELEGRAM_ALLOWED_CHAT_IDS` restricts the bot to your chat only. Anyone else who messages the bot is silently ignored. It is required — the bot refuses to start without it, unless you explicitly set `BENCH_TELEGRAM_ALLOW_ALL_CHATS=true` to run an intentionally public bot.
 
 **4. Start the bot**
 

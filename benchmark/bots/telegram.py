@@ -68,10 +68,14 @@ class TelegramBotApi:
     """Minimal Telegram Bot API client backed by httpx.
 
     Exposes only the endpoints needed by the polling loop and TelegramConnector:
-    getUpdates, sendMessage, and a no-op download_file / resolve_file_url pair
-    (the connector only requires image file IDs for multimodal attachments;
-    the benchmark stores those as URL references rather than downloading bytes).
+    getUpdates, sendMessage, and download_file. Attachments are downloaded as
+    bytes rather than resolved to URLs: Telegram file URLs embed the bot token,
+    and a URL would be persisted to the database and forwarded to every agent
+    endpoint — leaking the token to anyone with DB or endpoint access.
     """
+
+    # Telegram's Bot API caps downloadable files at 20 MB.
+    MAX_FILE_BYTES = 20 * 1024 * 1024
 
     def __init__(self, token: str, timeout: float = 30.0) -> None:
         self._base = f"https://api.telegram.org/bot{token}"
@@ -110,11 +114,12 @@ class TelegramBotApi:
         return resp.json()
 
     async def download_file(self, file_id: str) -> bytes | None:
-        """Return None to use URL-only mode; avoids downloading large files."""
-        return None
+        """Download attachment bytes for a Telegram file_id.
 
-    async def resolve_file_url(self, file_id: str) -> str | None:
-        """Resolve a Telegram file_id to an HTTPS URL."""
+        Returns None when the file cannot be resolved or exceeds
+        MAX_FILE_BYTES; the connector then reports the attachment as
+        unavailable instead of falling back to a tokenized URL.
+        """
         try:
             resp = await self._client.get(
                 f"{self._base}/getFile",
@@ -122,12 +127,26 @@ class TelegramBotApi:
                 timeout=10.0,
             )
             resp.raise_for_status()
-            data = resp.json()
-            file_path = data.get("result", {}).get("file_path")
-            if file_path:
-                return f"{self._file_base}/{file_path}"
+            result = resp.json().get("result", {})
+            file_path = result.get("file_path")
+            file_size = result.get("file_size")
+            if not file_path:
+                return None
+            if isinstance(file_size, int) and file_size > self.MAX_FILE_BYTES:
+                logger.warning("telegram_file_too_large", file_id=file_id, size=file_size)
+                return None
+            file_resp = await self._client.get(f"{self._file_base}/{file_path}", timeout=60.0)
+            file_resp.raise_for_status()
+            content = file_resp.content
+            if len(content) > self.MAX_FILE_BYTES:
+                logger.warning("telegram_file_too_large", file_id=file_id, size=len(content))
+                return None
+            return content
         except Exception:
-            pass
+            return None
+
+    async def resolve_file_url(self, file_id: str) -> str | None:
+        """Never expose a file URL: Telegram file URLs embed the bot token."""
         return None
 
 

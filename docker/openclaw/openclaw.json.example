@@ -1,0 +1,45 @@
+{
+  "_comment": "Copy to ./data/openclaw.json and fill in real values. models.providers points OpenClaw at your LLM backend (any OpenAI-compatible endpoint); gateway.auth.token is the bearer token the benchmark runner sends (BENCH_OPENCLAW_API_KEY); gateway.http.endpoints.chatCompletions.enabled exposes the OpenAI-compatible POST /v1/chat/completions the benchmark calls with model=openclaw.",
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "nvidia": {
+        "api": "openai-completions",
+        "baseUrl": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "nvapi-xxxx",
+        "models": [
+          {
+            "id": "nvidia/nemotron-3-super-120b-a12b",
+            "name": "Nemotron 3 Super 120B",
+            "contextWindow": 131072,
+            "maxTokens": 4096
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "nvidia/nvidia/nemotron-3-super-120b-a12b"
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "custom",
+    "customBindHost": "0.0.0.0",
+    "port": 8002,
+    "auth": {
+      "mode": "token",
+      "token": "change-me"
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
+    }
+  }
+}

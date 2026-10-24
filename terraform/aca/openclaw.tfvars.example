@@ -2,7 +2,7 @@
 # OpenClaw ACA deployment — separate resource group from Hermes
 #
 # Deploy:
-#   cp openclaw.tfvars.example openclaw.tfvars
+#   cp openclaw.tfvars.example openclaw.tfvars   # then fill in real values
 #   terraform init
 #   terraform apply -var-file=openclaw.tfvars
 #
@@ -11,7 +11,7 @@
 #   → https://openclaw-ca.<region>.azurecontainerapps.io
 #
 # Wire to benchmark runner:
-#   export BENCH_OPENCLAW_ENDPOINT=$(terraform output -raw endpoint_url)
+#   export BENCH_OPENCLAW_ENDPOINT=$(terraform output -raw endpoint_url)/v1
 #   export BENCH_OPENCLAW_DEPLOYMENT_TYPE=managed_container
 # ------------------------------------------------------------------
 
@@ -21,17 +21,41 @@ container_image     = "agentbenchacr.azurecr.io/openclaw:latest"
 container_port      = 8002
 region              = "eastus"
 
+# Private registry: set the ACR resource ID so the app's managed identity
+# gets AcrPull. Find it with: az acr show -n agentbenchacr --query id -o tsv
+acr_id = "/subscriptions/<sub-id>/resourceGroups/<acr-rg>/providers/Microsoft.ContainerRegistry/registries/agentbenchacr"
+
 # Same resources as Hermes — fair comparison
 cpu    = 2.0
 memory = "4Gi"
 
-# HTTP-based autoscaling: 1 replica always ready, scale to 10 on load
-min_replicas              = 1
+# min_replicas = 0 scales to zero when idle — near-zero cost, but the first
+# request after idle pays a cold start. Use 1 for consistent latency numbers.
+min_replicas              = 0
 max_replicas              = 10
 scale_concurrent_requests = "10"
 
-# API key — in production, use a Key Vault reference
-api_key_secret_ref = "your-openclaw-api-key-here"
+# Agent API key — the bearer token the benchmark runner sends.
+# OpenClaw reads it from AGENT_API_KEY (the default), so no
+# api_key_env_var_name override is needed.
+
+# Option A (recommended): Key Vault reference, resolved via managed identity.
+# The vault must use RBAC authorization for the automatic role assignment.
+# api_key_key_vault_secret_id = "https://<vault>.vault.azure.net/secrets/openclaw-api-key"
+# key_vault_id                = "/subscriptions/<sub-id>/resourceGroups/<kv-rg>/providers/Microsoft.KeyVault/vaults/<vault>"
+
+# Option B: literal value (stored as an ACA secret, kept out of state outputs).
+api_key = "your-openclaw-api-key-here"
+
+# LLM backend configuration (see DEPLOYMENT.md "Configuration Reference")
+env_vars = {
+  MODEL_NAME     = "nvidia/nemotron-3-super-120b-a12b"
+  MODEL_BASE_URL = "https://integrate.api.nvidia.com/v1"
+}
+
+secret_env_vars = {
+  MODEL_API_KEY = "nvapi-xxxx"
+}
 
 tags = {
   project     = "agentassistbench"

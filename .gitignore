@@ -55,9 +55,10 @@ htmlcov/
 *.crt
 
 # Terraform
-terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.backup
+terraform/**/.terraform/
+terraform/**/.terraform.lock.hcl
+terraform/**/*.tfstate
+terraform/**/*.tfstate.backup
 terraform/**/*.tfvars
 !terraform/**/*.tfvars.example
 
@@ -67,6 +68,7 @@ docker/**/.env
 
 # Docker agent data and state (large runtime artifacts, not needed for repo)
 docker/hermes/data/
+docker/openclaw/data/
 docker/openclaw/state/
 docker/hermes/logs/
 docker/openclaw/logs/

@@ -1,14 +1,19 @@
-# Hermes Agent Configuration for AgentAssistBench
-# Maximum freedom, full tool access, NVIDIA Nemotron-120B backend
+# Hermes Agent Configuration for AgentAssistBench — TEMPLATE
+# Maximum freedom, full tool access.
 #
-# This file is seeded into /opt/data/config.yaml on first boot.
-# The actual MODEL_BASE_URL, MODEL_API_KEY are read from .env
+# Copy to ./data/config.yaml and replace the model values with literal
+# strings. hermes-agent does NOT expand ${ENV_VAR} placeholders in this
+# file, so real values must be written here directly.
+
+# Required by the hermes-agent config migrator; without it the image treats
+# the config as ancient and refuses to auto-migrate.
+_config_version: 12
 
 model:
   provider: custom
-  model: ${MODEL_NAME:-nvidia/llama-3.1-nemotron-ultra-253b-v1}
-  base_url: ${MODEL_BASE_URL:-https://integrate.api.nvidia.com/v1}
-  api_key: ${MODEL_API_KEY}
+  model: nvidia/nemotron-3-super-120b-a12b
+  base_url: https://integrate.api.nvidia.com/v1
+  api_key: nvapi-xxxx  # literal value — env vars are NOT expanded here
   temperature: 0.7
   max_tokens: 4096
 
